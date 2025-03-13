@@ -1,9 +1,0 @@
-C:\Users\vaino\OneDrive\WORK\ArmaExtension\bin\Release\net9.0\win-x64\ArmaExtension_x64.deps.json
-C:\Users\vaino\OneDrive\WORK\ArmaExtension\bin\Release\net9.0\win-x64\ArmaExtension_x64.dll
-C:\Users\vaino\OneDrive\WORK\ArmaExtension\obj\Release\net9.0\win-x64\ArmaExtension.GeneratedMSBuildEditorConfig.editorconfig
-C:\Users\vaino\OneDrive\WORK\ArmaExtension\obj\Release\net9.0\win-x64\ArmaExtension.AssemblyInfoInputs.cache
-C:\Users\vaino\OneDrive\WORK\ArmaExtension\obj\Release\net9.0\win-x64\ArmaExtension.AssemblyInfo.cs
-C:\Users\vaino\OneDrive\WORK\ArmaExtension\obj\Release\net9.0\win-x64\ArmaExtension.csproj.CoreCompileInputs.cache
-C:\Users\vaino\OneDrive\WORK\ArmaExtension\obj\Release\net9.0\win-x64\ArmaExtension_x64.dll
-C:\Users\vaino\OneDrive\WORK\ArmaExtension\obj\Release\net9.0\win-x64\refint\ArmaExtension_x64.dll
-C:\Users\vaino\OneDrive\WORK\ArmaExtension\obj\Release\net9.0\win-x64\ref\ArmaExtension_x64.dll
