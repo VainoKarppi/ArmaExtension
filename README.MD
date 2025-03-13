@@ -46,6 +46,9 @@ Before you begin, ensure you have the following installed:
       ```
     - If the script gets stuck at "Building the project...", press `Ctrl+C` and try running the script again.
 
+3. **Edit `base_test.sqf`**:
+    - You can edit the `base_test.sqf` file as you wish, but keep the `XXXX` placeholder since this is automatically updated, and a copy of this file is moved to the `callExtension` folder.
+
 ## License
 
 This project is licensed under the MIT License. You are allowed to do whatever you want with it. See the [LICENSE](./LICENSE.MD) file for more details.
