@@ -19,7 +19,6 @@ if (-Not (Test-Path -Path $callExtensionPath)) {
 
 # Define the paths
 $projectPath = "../"  # Adjust the path to your .NET project
-$outputPath = "$projectPath\bin\Release\net9.0\win-x64\publish\"  # Adjust the target framework if necessary
 $destinationPath = "$PSScriptRoot\callExtension"
 $hashFilePath = "$destinationPath\files_hash.txt"
 
@@ -33,15 +32,30 @@ if ($csprojFile) {
     # Initialize $targetDll as an empty string
     $targetDll = ""
     $assemblyName = ""
+    $targetFramework = ""
+    $runtimeIdentifier = ""
+    
 
     # Iterate through all PropertyGroup elements to find AssemblyName
     foreach ($propertyGroup in $csproj.Project.PropertyGroup) {
         if ($propertyGroup.AssemblyName) {
             $assemblyName = $propertyGroup.AssemblyName
             $targetDll = $assemblyName + ".dll"
+        }
+        if ($propertyGroup.TargetFramework) {
+            $targetFramework = $propertyGroup.TargetFramework
+        }
+        if ($propertyGroup.RuntimeIdentifier) {
+            $runtimeIdentifier = $propertyGroup.RuntimeIdentifier
+        }
+
+        # Stop if all values are found
+        if ($assemblyName -ne "" -and $targetFramework -ne "" -and $runtimeIdentifier -ne "") {
             break
         }
     }
+
+    $outputPath = "$projectPath\src\bin\Release\$targetFramework\$runtimeIdentifier\publish\"
 
     if ($targetDll) {
         $sourceDllPath = "$outputPath\$targetDll"
@@ -85,6 +99,7 @@ if ($csprojFile) {
             Write-Host "Building task completed..." -ForegroundColor Blue
             if ($buildProcess.ExitCode -eq 0) {
                 Write-Host "Build successful." -ForegroundColor Green
+                Write-Host "File Location Folder: $outputPath" -ForegroundColor Green
 
                 # Copy the .dll file to the destination folder
                 Copy-Item -Path $sourceDllPath -Destination $destinationPath -Force

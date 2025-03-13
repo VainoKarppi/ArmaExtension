@@ -13,7 +13,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("ArmaExtension_x64")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+0e7d15f9eb1dca875edc1e3c65efe98098ed2acf")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+8361c8958292c19109d4e7369641f77e3bfea13b")]
 [assembly: System.Reflection.AssemblyProductAttribute("ArmaExtension_x64")]
 [assembly: System.Reflection.AssemblyTitleAttribute("ArmaExtension_x64")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]
