@@ -55,7 +55,7 @@ if ($csprojFile) {
         }
     }
 
-    $outputPath = "$projectPath\src\bin\Release\$targetFramework\$runtimeIdentifier\publish\"
+    $outputPath = "$projectPath\bin\Release\$targetFramework\$runtimeIdentifier\publish\"
 
     if ($targetDll) {
         $sourceDllPath = "$outputPath\$targetDll"
@@ -99,7 +99,8 @@ if ($csprojFile) {
             Write-Host "Building task completed..." -ForegroundColor Blue
             if ($buildProcess.ExitCode -eq 0) {
                 Write-Host "Build successful." -ForegroundColor Green
-                Write-Host "File Location Folder: $outputPath" -ForegroundColor Green
+                Write-Host "File Location Folder: $(if (Test-Path $outputPath) { Resolve-Path $outputPath } else { $outputPath })" -ForegroundColor Green
+
 
                 # Copy the .dll file to the destination folder
                 Copy-Item -Path $sourceDllPath -Destination $destinationPath -Force
