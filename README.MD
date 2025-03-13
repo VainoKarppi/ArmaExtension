@@ -1,15 +1,50 @@
-Download Visual Studio Installer:
+# ArmaExtension
 
-https://aka.ms/vs/17/release/vs_BuildTools.exe
+## Prerequisites
 
+Before you begin, ensure you have the following installed:
 
-Select:
-    MSVC v143 - VS 2022 C++ x64/x86 build tools OR NEWER
-    Windows 11 OR 10 SDK (latest version)
-    C++ CMake Tools for Windows
+1. **Visual Studio Build Tools**:
+    - Download the Visual Studio Installer from the following link:
+      [Visual Studio Build Tools](https://aka.ms/vs/17/release/vs_BuildTools.exe)
+    - During installation, select the following components:
+        - **MSVC v143 - VS 2022 C++ x64/x86 build tools** (or newer)
+        - **Windows 11 or 10 SDK** (latest version)
+        - **C++ CMake Tools for Windows**
 
+2. **PowerShell**:
+    - Ensure you have PowerShell installed and updated to the latest version.
 
-Change AssemblyName and Version as you wish inside ArmaExtension.csproj
+## Setup
 
-Navigate to Tools folder:
-run TestExtension.ps1
+1. **Clone the Repository**:
+    - Clone this repository to your local machine using:
+      ```sh
+      git clone https://github.com/VainoKarppi/ArmaExtension
+      ```
+
+2. **Configure Project**:
+    - Open the `ArmaExtension.csproj` file.
+    - Modify the `AssemblyName` and `Version` fields as per your requirements.
+
+3. **Build the Project**:
+    - Open a terminal and navigate to the project directory.
+    - Run the following command to build the project:
+      ```sh
+      msbuild ArmaExtension.sln
+      ```
+
+## Running Tests
+
+1. **Navigate to Tools Folder**:
+    - Open a terminal and navigate to the `Tools` folder within the project directory.
+
+2. **Run Test Script**:
+    - Execute the `TestExtension.ps1` script to run the tests:
+      ```sh
+      ./TestExtension.ps1
+      ```
+
+## License
+
+This project is licensed under the MIT License. You are allowed to do whatever you want with it. See the `LICENSE` file for more details.
