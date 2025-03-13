@@ -44,6 +44,7 @@ Before you begin, ensure you have the following installed:
       ```sh
       ./TestExtension.ps1
       ```
+    - If the script gets stuck at "Building the project...", press `Ctrl+C` and try running the script again.
 
 ## License
 
