@@ -1,4 +1,6 @@
 # Ignore bin and obj folders
 bin/
 obj/
-[T]ools/callExtension/
+[Tt]ools/callExtension/
+
+*.sln
