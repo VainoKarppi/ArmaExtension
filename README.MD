@@ -47,4 +47,4 @@ Before you begin, ensure you have the following installed:
 
 ## License
 
-This project is licensed under the MIT License. You are allowed to do whatever you want with it. See the [LICENSE](./LICENSE) file for more details.
+This project is licensed under the MIT License. You are allowed to do whatever you want with it. See the [LICENSE](./LICENSE.MD) file for more details.
