@@ -1,0 +1,17 @@
+21:37:10.591 | 
+==============================================================
+Extension (ArmaExtension) Started | C:\Users\vaino\OneDrive\WORK\ArmaExtension\Tools\callExtension\ | 1.0.0.0 |
+==============================================================
+21:37:10.593 | Starting WriterThread...
+21:37:10.600 | ASYNC  >> ["Array|0", [10,[123],5]]
+21:37:10.600 | CALLBACK TO ARMA >> ["ArmaExtension", "ASYNC_RESPONSE|0", "[[1,2,3,4,5]]"]
+21:37:10.893 | ASYNC  >> ["ArrayInner|1", [[10,[123],5,[test,[2]]]]]
+21:37:10.894 | CALLBACK TO ARMA >> ["ArmaExtension", "ASYNC_RESPONSE|1", "[[1,2,3,4,[1],5]]"]
+21:37:11.219 | ASYNC  >> ["Numeric|2", [10,10,10]]
+21:37:11.219 | Numeric Method Called: 10+10
+21:37:11.219 | CALLBACK TO ARMA >> ["ArmaExtension", "ASYNC_RESPONSE|2", "[20]"]
+21:37:11.544 | ASYNC  >> ["Boolean|3", [true]]
+21:37:11.544 | Boolean Method Called: True
+21:37:11.544 | CALLBACK TO ARMA >> ["ArmaExtension", "ASYNC_RESPONSE|3", "[[true,1000]]"]
+21:37:11.869 | ASYNC (VOID) >> ["Null|4", [null]]
+21:37:11.870 | Null Method Called: False
