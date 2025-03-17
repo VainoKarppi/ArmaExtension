@@ -28,10 +28,10 @@ public static class Methods {
     }
     public static object[] ArrayInner(object[] items) {
         Console.WriteLine("ArrayInner Method Called");
-        foreach (var item in items)
-        {
-            Console.WriteLine(item);
-        }
         return [1, 2, 3, 4,new object[] {1}, 5];
+    }
+    public static object[] NoArgs() {
+        Console.WriteLine("NoArgs Method Called");
+        return [1, 2, 3, 4, 5];
     }
 }

@@ -13,27 +13,29 @@ namespace ArmaExtension {
     public static class AsyncFactory {
         private static readonly Dictionary<int, Task> AsyncTasks = [];
 
-        public static void ExecuteAsyncTask(string method, string[] argArray, int asyncKey) {
+        public static void ExecuteAsyncTask(MethodInfo method, string[] argArray, int asyncKey) {
             Task.Run(async () => {
                 try {
-                    // Get the method to invoke
-                    MethodInfo methodInfo = typeof(Methods).GetMethod(method, BindingFlags.Public | BindingFlags.Static | BindingFlags.IgnoreCase)
-                        ?? throw new ArmaAsyncException(asyncKey, $"Method {method} not found.");
-                    
+                    bool isVoid = IsVoidMethod(method.Name);
 
+                    // Unserialize the data
                     object?[] unserializedData = Serializer.DeserializeJsonArray(argArray);
-                    Log(@$"ASYNC {(IsVoidMethod(method) ? "(VOID)" : "")} >> [""{method}|{asyncKey}"", {Serializer.PrintArray(unserializedData)}]");
-                    
 
-                    ParameterInfo[] parameters = methodInfo.GetParameters();
-                    if (unserializedData.Length > parameters.Length)
-                        unserializedData = unserializedData.Take(parameters.Length).ToArray(); // Trim excess parameters
+                    Log(@$"ASYNC RESPONSE {(isVoid ? "(VOID)" : "")} >> [""{method.Name}|{asyncKey}"", {Serializer.PrintArray(unserializedData)}]");
 
+                    // Check parameters
+                    ParameterInfo[] parameters = method.GetParameters();
+
+                    // If there are extra parameters, remove them
+                    if (unserializedData.Length > parameters.Length) unserializedData = unserializedData.Take(parameters.Length).ToArray();
+
+                    // If there are not enough parameters return error
                     if (unserializedData.Length != parameters.Length) {
-                        throw new ArmaAsyncException(asyncKey, $"Parameter count mismatch for method {method}. Expected {parameters.Length}, got {unserializedData.Length}.");
+                        throw new ArmaAsyncException(asyncKey, $"Parameter count mismatch for method {method.Name}. Expected {parameters.Length}, got {unserializedData.Length}.");
                     }
-
-                    object result = methodInfo.Invoke(null, unserializedData)!;
+                    
+                    // Invoke the method and get the result
+                    object result = method.Invoke(null, unserializedData)!;
 
                     // Await the task if the result is an asynchronous task
                     if (result is Task taskResult) {
@@ -41,8 +43,8 @@ namespace ArmaExtension {
                         if (taskResult is Task<object> taskObjectResult) result = await taskObjectResult;
                     }
 
-
-                    if (IsVoidMethod(method)) return;
+                    // Dont send a response if the method is void
+                    if (isVoid) return;
 
                     SendCallbackMessage(ASYNC_RESPONSE, [result], asyncKey);
                 } catch (Exception ex) {

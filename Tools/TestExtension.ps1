@@ -1,3 +1,9 @@
+# Define the paths
+$projectPath = Resolve-Path "$PSScriptRoot\.."
+Write-Host "Project Path: $projectPath" -ForegroundColor Blue
+Write-Host ""
+
+
 # Define the path to the callExtension folder
 $callExtensionPath = "$PSScriptRoot\callExtension"
 
@@ -44,12 +50,10 @@ if (-Not (Test-Path -Path $callExtensionPath)) {
     }
 
     Write-Host "callExtension Downloaded Succesfully!" -ForegroundColor Green
-} else {
-    Write-Host "callExtension folder found." -ForegroundColor Green
+} else { 
+    Write-Host "CallExtension already installed..." -ForegroundColor Green
 }
 
-# Define the paths
-$projectPath = "../"  # Adjust the path to your .NET project
 $destinationPath = "$PSScriptRoot\callExtension"
 $hashFilePath = "$destinationPath\files_hash.txt"
 
@@ -126,7 +130,9 @@ if ($csprojFile) {
         if ($buildRequired) {
             # Build the .NET project
             Write-Host "Building the project..." -ForegroundColor Blue
-            $buildProcess = Start-Process -FilePath "dotnet" -ArgumentList "publish", $projectPath -Wait -PassThru
+            $buildProcess = Start-Process -FilePath "dotnet" -ArgumentList "publish", $projectPath -WindowStyle Normal -PassThru
+            $buildProcess.WaitForExit()
+
             Write-Host "Building task completed..." -ForegroundColor Blue
             if ($buildProcess.ExitCode -eq 0) {
                 Write-Host "Build successful." -ForegroundColor Green
@@ -158,7 +164,7 @@ if ($csprojFile) {
         if (Test-Path -Path $testScriptPath) {
             $assemblyNameWithoutSuffix = $assemblyName -replace "_x64$", ""
             (Get-Content $testScriptPath) -replace "XXXX", $assemblyNameWithoutSuffix | Set-Content $testScriptPath
-            Write-Host "Modified test script using assembly name." -ForegroundColor Green
+            Write-Host "Succesfully Created a copy of the test .SQF Script" -ForegroundColor Green
 
             # Ensure the file is not in use
             Start-Sleep -Seconds 1
