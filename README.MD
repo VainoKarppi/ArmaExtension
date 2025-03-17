@@ -12,9 +12,6 @@ Before you begin, ensure you have the following installed:
         - **Windows 11 or 10 SDK** (latest version)
         - **C++ CMake Tools for Windows**
 
-2. **PowerShell**:
-    - Ensure you have PowerShell installed and updated to the latest version.
-
 ## Setup
 
 1. **Clone the Repository**:
@@ -47,7 +44,7 @@ Before you begin, ensure you have the following installed:
     - If the script gets stuck at "Building the project...", press `Ctrl+C` and try running the script again.
 
 3. **Edit `base_test.sqf`**:
-    - You can edit the `base_test.sqf` file as you wish, but keep the `XXXX` placeholder since this is automatically updated, and a copy of this file is moved to the `callExtension` folder.
+    - You can edit the `base_test.sqf` file as you wish, but keep the `XXXX` placeholder since this is automatically updated, when a copy of this file is moved to the `callExtension` folder.
 
 ## License
 
