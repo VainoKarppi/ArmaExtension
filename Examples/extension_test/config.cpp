@@ -21,7 +21,7 @@ class CfgFunctions
 		{
 			file = "\scripts\functions";
 			preinit = 1;
-			class init {}; // Called from Display3DEN:control
+			class init {};
 		};
 		class Functions_Extension
 		{
@@ -29,7 +29,7 @@ class CfgFunctions
             class callExtension {};
 			class callExtensionAsync {};
             class initEvents {};
-			class createId {};
+			class createAsyncId {};
 		};
 	};
 };

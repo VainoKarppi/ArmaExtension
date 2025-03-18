@@ -16,7 +16,7 @@ namespace ArmaExtension {
         public static void ExecuteAsyncTask(MethodInfo method, string[] argArray, int asyncKey) {
             Task.Run(async () => {
                 try {
-                    bool isVoid = IsVoidMethod(method.Name);
+                    bool isVoid = IsVoidMethod(method.Name) || asyncKey == -1;
 
                     // Unserialize the data
                     object?[] unserializedData = Serializer.DeserializeJsonArray(argArray);
@@ -37,19 +37,18 @@ namespace ArmaExtension {
                     // Invoke the method and get the result
                     object result = method.Invoke(null, unserializedData)!;
 
+                    // Dont send a response if the method is void
+                    if (isVoid) return;
+
                     // Await the task if the result is an asynchronous task
                     if (result is Task taskResult) {
                         await taskResult;
                         if (taskResult is Task<object> taskObjectResult) result = await taskObjectResult;
                     }
 
-                    // Dont send a response if the method is void
-                    if (isVoid) return;
-
-                    SendCallbackMessage(ASYNC_RESPONSE, [result], asyncKey);
+                    SendAsyncCallbackMessage(ASYNC_RESPONSE, [result], (int)ReturnCodes.Success, asyncKey);
                 } catch (Exception ex) {
-                    Log(ex.Message);
-                    SendCallbackMessage(ASYNC_FAILED, [ex.Message], asyncKey);
+                    SendAsyncCallbackMessage(ASYNC_FAILED, [ex.Message], (int)ReturnCodes.Error, asyncKey);
                 } finally {
                     lock (AsyncTasks) AsyncTasks.Remove(asyncKey);
                 }

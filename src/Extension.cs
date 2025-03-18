@@ -14,7 +14,7 @@ public static class Extension {
     public readonly static string Version = Assembly.GetExecutingAssembly().GetName().Version?.ToString()!;
     public readonly static string ExtensionName = GetAssemblyName();
     
-    enum ReturnCodes {
+    public enum ReturnCodes {
         Success = 0,
         Error = 1,
         InvalidMethod = 2,
@@ -22,6 +22,7 @@ public static class Extension {
     }
     
     public const string SUCCESS = "SUCCESS";
+    public const string SUCCESS_VOID = "SUCCESS_VOID";
     public const string ERROR = "ERROR";
     public const string ASYNC_RESPONSE = "ASYNC_RESPONSE";
     public const string ASYNC_SENT = "ASYNC_SENT";
@@ -67,44 +68,10 @@ public static class Extension {
     /// <param name="outputSize">The maximum size of the buffer (20480 bytes)</param>
     /// <param name="function">The function identifier passed in "callExtension"</param>
     [UnmanagedCallersOnly(EntryPoint = "RVExtension")]
-    public static void RVExtension(nint output, int outputSize, nint function) {
+    public static int RVExtension(nint output, int outputSize, nint function) {
         string method = Marshal.PtrToStringAnsi(function) ?? string.Empty;
-        string[] methodData = method.Split("|");
-        method = methodData.First();
 
-        try {
-            // Make sure the method is not empty and exists
-            if (string.IsNullOrEmpty(method) || !MethodExists(method)) throw new Exception("Invalid Method");
-            
-            
-            // Get method info
-            MethodInfo methodToInvoke = GetMethod(method);
-
-            bool isVoid = IsVoidMethod(method);
-
-            //--- USE ASYNC METHOD
-            int asyncKey = 0;
-            bool async = methodData.Length > 1 && int.TryParse(methodData.Last(), out asyncKey);
-            if (async) {
-                AsyncFactory.ExecuteAsyncTask(methodToInvoke, [], asyncKey);
-
-                WriteOutput(output, outputSize, method, $@"[""{(isVoid ? ASYNC_SENT_VOID : ASYNC_SENT)}"",[]]", (int)ReturnCodes.Success);
-                return;
-            }
-
-
-            // Make sure there are no parameters
-            ParameterInfo[] parameters = methodToInvoke.GetParameters();
-            if (parameters.Length > 0) throw new Exception("This method requires parameters! Use Args method.");
-
-            // Invoke the method and get the result
-            dynamic? invocationResult = methodToInvoke.Invoke(null, null);
-            object result = invocationResult is Task ? invocationResult.Result : invocationResult!;
-
-            WriteOutput(output, outputSize, method, @$"[""{SUCCESS}"",{Serializer.PrintArray([result])}]", (int)ReturnCodes.Success);
-        } catch (Exception ex) {
-            WriteOutput(output, outputSize, method, @$"[""{ERROR}"",[""{ex.Message}""]]", (int)ReturnCodes.Error);
-        }
+        return ExecuteArmaMethod(output, outputSize, method);
     }
 
 
@@ -121,47 +88,17 @@ public static class Extension {
     [UnmanagedCallersOnly(EntryPoint = "RVExtensionArgs")]
     public static int RVExtensionArgs(nint output, int outputSize, nint function, nint args, int argsCnt) {
         
-        // Get Method Name and possible Async key
+        // Get Method Name
         string method = Marshal.PtrToStringAnsi(function) ?? string.Empty;
-        string[] methodData = method.Split("|");
-        method = methodData.First();
 
-        try {
-            if (!MethodExists(method)) throw new Exception("Invalid Method");
-
-            string[] argArray = new string[argsCnt];
-
-            for (int i = 0; i < argsCnt; i++) {
-                nint argPtr = Marshal.ReadIntPtr(args, i * nint.Size);
-                argArray[i] = Marshal.PtrToStringAnsi(argPtr) ?? string.Empty;
-            }
-
-            bool isVoid = IsVoidMethod(method);
-            MethodInfo methodToInvoke = GetMethod(method);
-
-            //--- USE ASYNC METHOD
-            int asyncKey = 0;
-            bool async = methodData.Length > 1 && int.TryParse(methodData.Last(), out asyncKey);
-            if (async) {
-                // Execute in Async
-                AsyncFactory.ExecuteAsyncTask(methodToInvoke, argArray, asyncKey);
-
-                return WriteOutput(output, outputSize, method, $@"[""{(isVoid ? ASYNC_SENT_VOID : ASYNC_SENT)}"",[]]", (int)ReturnCodes.Success);
-            }
-
-            //--- USE SYNCRONOUS METHOD
-
-            // Unserialize the data
-            object?[] unserializedData = Serializer.DeserializeJsonArray(argArray);
-            
-            // Invoke the method and get the result
-            dynamic? invocationResult = methodToInvoke.Invoke(null, unserializedData);
-            object result = invocationResult is Task ? invocationResult.Result : invocationResult!;
-
-            return WriteOutput(output, outputSize, method, @$"[""{SUCCESS}"",{Serializer.PrintArray([result])}]", (int)ReturnCodes.Success);
-        } catch (Exception ex) {
-            return WriteOutput(output, outputSize, method, @$"[""{ERROR}"",[""{ex.Message}""]]", (int)ReturnCodes.Error);
+        // Get Args
+        string[] argArray = new string[argsCnt];
+        for (int i = 0; i < argsCnt; i++) {
+            nint argPtr = Marshal.ReadIntPtr(args, i * nint.Size);
+            argArray[i] = Marshal.PtrToStringAnsi(argPtr) ?? string.Empty;
         }
+
+        return ExecuteArmaMethod(output, outputSize, method, argArray);
     }
 
 
@@ -170,10 +107,11 @@ public static class Extension {
 
 
 
-    public static void SendCallbackMessage(string method, object[] data, int? asyncKey = null) {
+    public static void SendAsyncCallbackMessage(string method, object[] data, int errorCode = 0, int asyncKey = -1) {
         if (string.IsNullOrEmpty(method)) Log("Empty function name in SendCallbackMessage.");
 
-        if (asyncKey != null) method += $"|{asyncKey}"; // Check if ASYNC answer
+        method += $"|{asyncKey}|{errorCode}";
+
         string returnData = Serializer.PrintArray(data);
 
         Log(@$"CALLBACK TO ARMA >> [""{ExtensionName}"", ""{method}"", ""{returnData}""]");
@@ -230,5 +168,55 @@ public static class Extension {
         //--- USING SYNCRONOUS METHOD
         MethodInfo? methodInfo = typeof(Methods).GetMethod(method, BindingFlags.Public | BindingFlags.Static | BindingFlags.IgnoreCase);
         return methodInfo!;
+    }
+
+    private static int ExecuteArmaMethod(nint output, int outputSize, string method, string[]? argArray = null) {
+        try {
+            argArray ??= [];
+            
+            if (string.IsNullOrEmpty(method)) throw new Exception("Invalid Method");
+
+            string[] methodData = method.Split("|");
+            method = methodData.First();
+
+            if (!MethodExists(method)) throw new Exception("Invalid Method");
+
+            // Get method info
+            MethodInfo methodToInvoke = GetMethod(method);
+
+            bool isVoid = IsVoidMethod(method);
+
+            //--- USE ASYNC METHOD
+            int asyncKey = 0;
+            bool async = methodData.Length > 1 && int.TryParse(methodData.Last(), out asyncKey);
+            if (async) {
+                // Execute in Async
+                AsyncFactory.ExecuteAsyncTask(methodToInvoke, argArray, asyncKey);
+
+                return WriteOutput(output, outputSize, method, $@"[""{(isVoid ? ASYNC_SENT_VOID : ASYNC_SENT)}"",[]]", (int)ReturnCodes.Success);
+            }
+            //--- USING SYNCRONOUS
+
+            // Make sure there are no parameters
+            ParameterInfo[] parameters = methodToInvoke.GetParameters();
+            
+            if (parameters.Length > 0 && argArray.Length == 0) throw new Exception("Parameters missing!");
+
+            object?[]? unserializedData = Serializer.DeserializeJsonArray(argArray);
+
+            // Run the void method in a new task and return immediately
+            if (isVoid) {
+                Task.Run(() => methodToInvoke.Invoke(null, unserializedData));
+                return WriteOutput(output, outputSize, method, @$"[""{SUCCESS_VOID}"",[]]", (int)ReturnCodes.Success);
+            }
+
+            // Invoke the method and get the result
+            dynamic? invocationResult = methodToInvoke.Invoke(null, unserializedData);
+            object result = invocationResult is Task ? invocationResult.Result : invocationResult!;
+
+            return WriteOutput(output, outputSize, method, @$"[""{SUCCESS}"",{Serializer.PrintArray([result])}]", (int)ReturnCodes.Success);
+        } catch (Exception ex) {
+            return WriteOutput(output, outputSize, method, @$"[""{ERROR}"",[""{ex.Message}""]]", (int)ReturnCodes.Error);
+        }
     }
 }

@@ -15,4 +15,7 @@ diag_log formatText ["VERSION: %1",_version];
 
 
 _request = ["Numeric",[5+5]];
-_return = [_request] call EOE_fnc_callExtensionAsync;
+_return = [_request] call EXT_fnc_callExtensionAsync;
+
+_request = "NoArgs";
+_return = [_request] call EXT_fnc_callExtension;

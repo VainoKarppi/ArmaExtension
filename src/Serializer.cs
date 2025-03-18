@@ -18,6 +18,9 @@ public static class Serializer {
     /// <param name="parameters"></param>
     /// <returns>object array that contains all the data</returns>
     public static object?[] DeserializeJsonArray(string[] armaString) {
+
+        if (armaString.Length == 0) return [];
+
         List<object?> result = [];
 
         if (armaString.Length > 0) {
@@ -72,7 +75,9 @@ public static class Serializer {
         }
         return result;
     }
-    public static string PrintArray(object?[] array) {
+    public static string PrintArray(object?[]? array) {
+        if (array is null) return "[]";
+
         return "[" + string.Join(",", array.Select(item =>
             item switch {
                 object[] nested => PrintArray(nested),

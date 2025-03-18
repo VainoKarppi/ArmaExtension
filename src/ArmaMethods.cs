@@ -20,7 +20,7 @@ public static class Methods {
         return "IS THIS WORKING";
     }
     public static void Null(bool input) {
-        Log($"Null Method Called: {bool.Parse(input.ToString())}");
+        Log($"Null Method Called: {input}");
     }
     public static object[] Array(double first, object[] second, double third) {
         Console.WriteLine("Array Method Called");
