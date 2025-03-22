@@ -248,11 +248,18 @@ function Watch-ArmaLog {
 
         Write-Host "New log file detected: $($newLog.FullName)" -ForegroundColor Green
 
-        # Live monitoring of the new log file
-        $logMonitor = Start-Process -FilePath "powershell.exe" `
-            -ArgumentList "-NoProfile -ExecutionPolicy Bypass -Command `"Get-Content -Path '$($newLog.FullName)' -Wait`"" `
-            -PassThru -WindowStyle Hidden
-        
+        # Live monitoring of the new log file with Ctrl+C handling
+        try {
+            Get-Content -Path $newLog.FullName -Wait | ForEach-Object {
+                Write-Host $_
+            }
+        } catch {
+            if ($_.Exception.GetType().Name -eq "OperationCanceledException") {
+                Write-Host "Log monitoring was stopped by user (Ctrl+C)." -ForegroundColor Yellow
+            } else {
+                Write-Host "An error occurred during log monitoring: $_" -ForegroundColor Red
+            }
+        }
 
         # Monitor Arma 3 and stop log monitoring if needed
         while ($true) {
@@ -260,8 +267,7 @@ function Watch-ArmaLog {
 
             # Check if Arma 3 is still running
             if (-not (Get-Process -Name "arma3_x64" -ErrorAction SilentlyContinue)) {
-                Write-Host "Arma 3 has stopped. Terminating log monitoring." -ForegroundColor Red
-                Stop-Process -Id $logMonitor.Id -Force -ErrorAction SilentlyContinue
+                Write-Host "Arma 3 has stopped. Stopping log monitoring." -ForegroundColor Red
                 return
             }
         }

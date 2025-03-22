@@ -38,27 +38,30 @@ private _returnData = _return select 1;
 if (_returnMessage == "ERROR") exitWith {
 	EXT_var_extensionRequests deleteAt _requestId;
 	diag_log formatText ["ERROR: %1", _return select 1];
-	"asdasd"
 };
 
 diag_log formatText ["WAITING FOR REPSONSE FOR REQUEST: %1", _requestId];
 
 
 
+_return = nil;
 private _success = false;
 private _tries = _timeout * 50;
 private _returnData = "Request timed out!";
 while {_tries > 0} do {
 	if !(_requestId in EXT_var_extensionRequests) exitWith { diag_log "ERROR: Request has been canceled!"; "asdasdasd"};
-	private _what = EXT_var_extensionResponses get _requestId;
-	if (!isNil "_what") exitWith {_returnData = _what; _success = true};
+	_return = EXT_var_extensionResponses get _requestId;
+
+	if (!isNil "_return") exitWith {
+		_returnData = _return select 0;
+		_success = _return select 1 == 0; // Error if code: !0
+	};
+	
 	if (canSuspend) then {uiSleep 0.05};
 	_tries = _tries - 1;
 };
 
-if (true) exitWith {[_returnData,_success]};
-
-if !(_success) exitWith { diag_log formatText ["ERROR: %1",_returnData]; "_success = false"};
+if !(_success) exitWith { diag_log formatText ["ERROR: %1", _returnData]; _returnData};
 
 diag_log formatText ["SUCCESS WITH DATA: %1",_returnData];
 

@@ -29,6 +29,20 @@ if (Build-Project -projectPath $projectPath -destinationPath $modFolder) {
     if (Pack-Addons -modFolder $modFolder) {
         if (Start-Arma) {
             Watch-ArmaLog
+
+            # Ask if the user wants to terminate Arma 3 before exit
+            $userInput = Read-Host "Do you want to terminate Arma 3 before exiting? (Y/N)"
+
+            if ($userInput -eq 'Y' -or $userInput -eq 'y') {
+                # Terminate Arma 3 process
+                $armaProcess = Get-Process -Name "arma3_x64" -ErrorAction SilentlyContinue
+                if ($armaProcess) {
+                    Write-Host "Terminating Arma 3..."
+                    Stop-Process -Name "arma3_x64" -Force
+                }
+            } else {
+                Write-Host "Arma 3 will remain running."
+            }
         }
     }
 }
