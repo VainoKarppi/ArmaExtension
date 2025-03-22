@@ -82,7 +82,7 @@ public static class Serializer {
             item switch {
                 object[] nested => PrintArray(nested),
                 bool b => b.ToString().ToLower(),
-                string str => str,
+                string str => @$"""{str}""",
                 _ => item?.ToString() ?? "null"
             })) + "]";
     }

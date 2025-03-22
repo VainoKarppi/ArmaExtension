@@ -19,13 +19,13 @@ class CfgFunctions
 		tag = "EXT";
 		class Functions_Main
 		{
-			file = "\scripts\functions";
+			file = "\extension\functions";
 			preinit = 1;
 			class init {};
 		};
 		class Functions_Extension
 		{
-			file = "\scripts\functions\extension";
+			file = "\extension\functions\extension";
             class callExtension {};
 			class callExtensionAsync {};
             class initEvents {};

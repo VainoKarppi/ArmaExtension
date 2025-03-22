@@ -7,6 +7,9 @@ using static ArmaExtension.Logger;
 namespace ArmaExtension;
 
 public static class Methods {
+    public static string Version() {
+        return Extension.Version;
+    }
     public static double Numeric(double first, double second) {
         Log($"Numeric Method Called: {first}+{second}");
         return first+second;
@@ -17,7 +20,7 @@ public static class Methods {
     }
     public static string String(string input) {
         Log($"String Method Called: {input}");
-        return "IS THIS WORKING";
+        return "IS THIS WORKINGgg";
     }
     public static void Null(bool input) {
         Log($"Null Method Called: {input}");
