@@ -28,11 +28,11 @@ public static class Logger {
         try {
             Log("Starting WriterThread...");
             string dir = Extension.AssemblyDirectory;
-            string logFolder = Path.Combine(Path.GetDirectoryName(dir) ?? string.Empty, "Logs");
+            string logFolder = Path.Combine(Path.GetDirectoryName(dir) ?? string.Empty, $"{Extension.ExtensionName}_Logs");
 
             if (!Directory.Exists(logFolder)) Directory.CreateDirectory(logFolder);
 
-            logFile ??= Path.Combine(logFolder, $"Log_{DateTime.Now:yyyy-MM-dd-HH_mm_ss}.txt");
+            logFile ??= Path.Combine(logFolder, $"Log_{DateTime.Now:yyyy-MM-dd-HH_mm_ss}.log");
 
             while (writerThread != null) {
                 if (!Texts.IsEmpty) {

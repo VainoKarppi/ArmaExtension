@@ -4,3 +4,7 @@ obj/
 [Tt]ools/callExtension/
 
 *.sln
+*.dll
+*.pbo
+
+**/hash.txt

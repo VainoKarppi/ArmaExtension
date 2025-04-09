@@ -9,6 +9,8 @@ sleep 0.3;
 sleep 0.3;
 "XXXX" callExtension ["Boolean|3",[true]];
 sleep 0.3;
+"XXXX" callExtension ["String|5",["asdasd"]];
+sleep 0.3;
 "XXXX" callExtension ["Null|4",[nil]];
 
 
@@ -21,6 +23,8 @@ sleep 0.3;
 "XXXX" callExtension "NoArgs|3333";
 sleep 0.3;
 "XXXX" callExtension "Numeric";
+sleep 0.3;
+"XXXX" callExtension ["String",["asdasd"]];
 
 sleep 0.3;
 freeExtension "XXXX";

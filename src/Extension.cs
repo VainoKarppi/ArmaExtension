@@ -139,7 +139,17 @@ public static class Extension {
 
     [RequiresAssemblyFiles()]
     private static string GetAssemblyLocation() {
-        string dir = Assembly.GetExecutingAssembly().Location!;
+        string? dir = Assembly.GetExecutingAssembly().Location;
+        if (string.IsNullOrEmpty(dir)) dir = AppContext.BaseDirectory;
+        if (string.IsNullOrEmpty(dir)) dir = Assembly.GetAssembly(typeof(Extension))?.Location;
+        if (string.IsNullOrEmpty(dir)) dir = typeof(Extension).Assembly.Location;
+        
+        if (string.IsNullOrEmpty(dir)) dir = AppContext.BaseDirectory;
+
+        if (string.IsNullOrEmpty(dir)) dir = Assembly.GetCallingAssembly().Location;
+        
+
+        // Fallback to Arma 3 Directory
         if (string.IsNullOrEmpty(dir)) dir = AppDomain.CurrentDomain.BaseDirectory;
         if (string.IsNullOrEmpty(dir)) throw new DirectoryNotFoundException("Unable to locate Assembly start Directory!");
         return dir;
