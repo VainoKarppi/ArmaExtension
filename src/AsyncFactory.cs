@@ -12,8 +12,26 @@ using static ArmaExtension.Extension;
 namespace ArmaExtension {
     public static class AsyncFactory {
         private static readonly Dictionary<int, Task> AsyncTasks = [];
+        private static readonly Dictionary<string, CancellationTokenSource> CancelTokens = [];
 
-        public static void ExecuteAsyncTask(MethodInfo method, string[] argArray, int asyncKey) {
+        private static string CreateCancelToken(CancellationTokenSource source) {
+            string token = Guid.NewGuid().ToString("N").ToUpper();
+            lock (CancelTokens) CancelTokens.Add(token, source);
+            return token;
+        }
+
+        public static bool CancelAsyncTask(string token) {
+            if (CancelTokens.TryGetValue(token, out CancellationTokenSource? source)) {
+                source.Cancel();
+                lock (CancelTokens) CancelTokens.Remove(token);
+                return true;
+            }
+            return false;
+        }
+
+        public static string ExecuteAsyncTask(MethodInfo method, string[] argArray, int asyncKey) {
+            string token = CreateCancelToken(new CancellationTokenSource());
+
             Task.Run(async () => {
                 try {
                     bool isVoid = IsVoidMethod(method.Name) || asyncKey == -1;
@@ -51,10 +69,13 @@ namespace ArmaExtension {
                     SendAsyncCallbackMessage(ASYNC_FAILED, [ex.Message], (int)ReturnCodes.Error, asyncKey);
                 } finally {
                     lock (AsyncTasks) AsyncTasks.Remove(asyncKey);
+                    lock (CancelTokens) CancelTokens.Remove(token);
                 }
-            });
+            }, CancelTokens[token].Token);
 
             lock (AsyncTasks) AsyncTasks.Add(asyncKey, Task.CompletedTask);
+
+            return token;
         }
     }
 }
