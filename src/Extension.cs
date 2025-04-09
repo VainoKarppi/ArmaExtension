@@ -28,7 +28,7 @@ public static class Extension {
     public const string ASYNC_SENT = "ASYNC_SENT";
     public const string ASYNC_SENT_VOID = "ASYNC_SENT_VOID";
     public const string ASYNC_FAILED = "ASYNC_FAILED";
-    public const string ASYNC_CANCELLED = "ASYNC_CANCELLED";
+    public const string ASYNC_CANCEL_SUCCESS = "ASYNC_CANCEL_SUCCESS";
     public const string ASYNC_CANCEL = "ASYNC_CANCEL";
     public const string ASYNC_CANCEL_FAILED = "ASYNC_CANCEL_FAILED";
     public const string ASYNC_SUCCESS = "ASYNC_SUCCESS";
@@ -192,7 +192,7 @@ public static class Extension {
 
             if (method.Equals(ASYNC_CANCEL, StringComparison.CurrentCultureIgnoreCase)) {
                 bool success = AsyncFactory.CancelAsyncTask(methodData.Last());
-                if (success) return WriteOutput(output, outputSize, method, $@"[""{ASYNC_CANCELLED}"",[]]", (int)ReturnCodes.Success);
+                if (success) return WriteOutput(output, outputSize, method, $@"[""{ASYNC_CANCEL_SUCCESS}"",[]]", (int)ReturnCodes.Success);
                 else return WriteOutput(output, outputSize, method, $@"[""{ASYNC_CANCEL_FAILED}"",[]]", (int)ReturnCodes.Error);
             }
 
