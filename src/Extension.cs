@@ -21,16 +21,21 @@ public static class Extension {
         InvalidParameters = 3
     }
     
-    public const string SUCCESS = "SUCCESS";
-    public const string SUCCESS_VOID = "SUCCESS_VOID";
-    public const string ERROR = "ERROR";
-    public const string ASYNC_RESPONSE = "ASYNC_RESPONSE";
-    public const string ASYNC_SENT = "ASYNC_SENT";
-    public const string ASYNC_SENT_VOID = "ASYNC_SENT_VOID";
-    public const string ASYNC_FAILED = "ASYNC_FAILED";
-    public const string ASYNC_CANCELLED = "ASYNC_CANCELLED";
-    public const string ASYNC_SUCCESS = "ASYNC_SUCCESS";
-    public const string CALLFUNCTION = "CALLFUNCTION";
+    public enum ResultCodes {
+        SUCCESS,
+        SUCCESS_VOID,
+        ERROR,
+        ASYNC_RESPONSE,
+        ASYNC_SENT,
+        ASYNC_SENT_VOID,
+        ASYNC_FAILED,
+        ASYNC_CANCEL_SUCCESS,
+        ASYNC_CANCEL,
+        ASYNC_CANCEL_FAILED,
+        ASYNC_SUCCESS,
+        CALLFUNCTION
+    }
+
     
 
     
@@ -107,7 +112,7 @@ public static class Extension {
 
 
 
-    public static void SendAsyncCallbackMessage(string method, object[] data, int errorCode = 0, int asyncKey = -1) {
+    public static void SendAsyncCallbackMessage(string method, object?[] data, int errorCode = 0, int asyncKey = -1) {
         if (string.IsNullOrEmpty(method)) Log("Empty function name in SendCallbackMessage.");
 
         method += $"|{asyncKey}|{errorCode}";
@@ -183,50 +188,64 @@ public static class Extension {
     private static int ExecuteArmaMethod(nint output, int outputSize, string method, string[]? argArray = null) {
         try {
             argArray ??= [];
-            
-            if (string.IsNullOrEmpty(method)) throw new Exception("Invalid Method");
 
-            string[] methodData = method.Split("|");
-            method = methodData.First();
+            int pipeIndex = method.IndexOf('|');
+            string originalMethod = pipeIndex >= 0 ? method[..pipeIndex] : method;
+            if (string.IsNullOrEmpty(originalMethod)) throw new Exception("Invalid Method");
 
-            if (!MethodExists(method)) throw new Exception("Invalid Method");
-
-            // Get method info
-            MethodInfo methodToInvoke = GetMethod(method);
-
-            bool isVoid = IsVoidMethod(method);
-
-            //--- USE ASYNC METHOD
-            int asyncKey = 0;
-            bool async = methodData.Length > 1 && int.TryParse(methodData.Last(), out asyncKey);
-            if (async) {
-                // Execute in Async
-                AsyncFactory.ExecuteAsyncTask(methodToInvoke, argArray, asyncKey);
-
-                return WriteOutput(output, outputSize, method, $@"[""{(isVoid ? ASYNC_SENT_VOID : ASYNC_SENT)}"",[]]", (int)ReturnCodes.Success);
+            if (originalMethod.Equals(ResultCodes.ASYNC_CANCEL.ToString(), StringComparison.OrdinalIgnoreCase)) {
+                string taskKey = pipeIndex >= 0 ? method[(pipeIndex + 1)..] : string.Empty;
+                bool success = AsyncFactory.CancelAsyncTask(taskKey);
+                return WriteOutput(output, outputSize, originalMethod,
+                    $@"[""{(success ? ResultCodes.ASYNC_CANCEL_SUCCESS : ResultCodes.ASYNC_CANCEL_FAILED)}"",[]]",
+                    success ? (int)ReturnCodes.Success : (int)ReturnCodes.Error);
             }
-            //--- USING SYNCRONOUS
 
-            // Make sure there are no parameters
+            if (!MethodExists(originalMethod)) throw new Exception("Invalid Method");
+
+            MethodInfo methodToInvoke = GetMethod(originalMethod);
+            bool isVoid = IsVoidMethod(originalMethod);
+
+            int asyncKey = 0;
+            bool async = pipeIndex >= 0 && int.TryParse(method[(pipeIndex + 1)..], out asyncKey);
+
+            if (async) {
+                string cancelKey = AsyncFactory.ExecuteAsyncTask(methodToInvoke, argArray, asyncKey);
+                string outputPayload = isVoid
+                    ? $@"[""{ResultCodes.ASYNC_SENT_VOID}"",[]]"
+                    : $@"[""{ResultCodes.ASYNC_SENT}"",[""{cancelKey}""]]";
+                
+                return WriteOutput(output, outputSize, originalMethod, outputPayload, (int)ReturnCodes.Success);
+            }
+
+
             ParameterInfo[] parameters = methodToInvoke.GetParameters();
-            
-            if (parameters.Length > 0 && argArray.Length == 0) throw new Exception("Parameters missing!");
+            if (parameters.Length > 0 && argArray.Length == 0)
+                throw new Exception("Parameters missing!");
 
-            object?[]? unserializedData = Serializer.DeserializeJsonArray(argArray);
+            object?[] unserializedData = Serializer.DeserializeJsonArray(argArray);
 
-            // Run the void method in a new task and return immediately
             if (isVoid) {
                 Task.Run(() => methodToInvoke.Invoke(null, unserializedData));
-                return WriteOutput(output, outputSize, method, @$"[""{SUCCESS_VOID}"",[]]", (int)ReturnCodes.Success);
+                return WriteOutput(output, outputSize, originalMethod,
+                    $@"[""{ResultCodes.SUCCESS_VOID}"",[]]",
+                    (int)ReturnCodes.Success);
             }
 
-            // Invoke the method and get the result
-            dynamic? invocationResult = methodToInvoke.Invoke(null, unserializedData);
-            object result = invocationResult is Task ? invocationResult.Result : invocationResult!;
+            object? result = methodToInvoke.Invoke(null, unserializedData);
+            if (result is Task task) task.Wait();
+            object? returnValue = result is Task t && t.GetType().IsGenericType
+                ? ((dynamic)t).Result
+                : result;
 
-            return WriteOutput(output, outputSize, method, @$"[""{SUCCESS}"",{Serializer.PrintArray([result])}]", (int)ReturnCodes.Success);
+            return WriteOutput(output, outputSize, originalMethod,
+                $@"[""{ResultCodes.SUCCESS}"",{Serializer.PrintArray([returnValue])}]",
+                (int)ReturnCodes.Success);
         } catch (Exception ex) {
-            return WriteOutput(output, outputSize, method, @$"[""{ERROR}"",[""{ex.Message}""]]", (int)ReturnCodes.Error);
+            return WriteOutput(output, outputSize, method,
+                $@"[""{ResultCodes.ERROR}"",[""{ex.Message}""]]",
+                (int)ReturnCodes.Error);
         }
     }
+
 }

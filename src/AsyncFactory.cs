@@ -11,50 +11,70 @@ using static ArmaExtension.Extension;
 
 namespace ArmaExtension {
     public static class AsyncFactory {
-        private static readonly Dictionary<int, Task> AsyncTasks = [];
+        private static readonly ConcurrentDictionary<int, Task> AsyncTasks = new();
+        private static readonly ConcurrentDictionary<string, CancellationTokenSource> CancelTokens = new();
 
-        public static void ExecuteAsyncTask(MethodInfo method, string[] argArray, int asyncKey) {
+
+        public static bool CancelAsyncTask(string token) {
+            if (CancelTokens.TryGetValue(token, out CancellationTokenSource? source)) {
+                source.Cancel();
+                return CancelTokens.TryRemove(token, out _);
+            }
+            return false;
+        }
+
+        public static string ExecuteAsyncTask(MethodInfo method, string[] argArray, int asyncKey) {
+            bool isVoid = IsVoidMethod(method.Name) || asyncKey == -1;
+
+            // Only create cancel token if we’ll actually use it
+            CancellationTokenSource? source = null;
+            string token = string.Empty;
+
+            if (!isVoid) {
+                source = new CancellationTokenSource();
+                token = Guid.NewGuid().ToString("N").ToUpper();
+                CancelTokens[token] = source;
+            }
+
+            var capturedToken = source?.Token ?? CancellationToken.None;
+
             Task.Run(async () => {
                 try {
-                    bool isVoid = IsVoidMethod(method.Name) || asyncKey == -1;
-
-                    // Unserialize the data
                     object?[] unserializedData = Serializer.DeserializeJsonArray(argArray);
 
                     Log(@$"ASYNC RESPONSE {(isVoid ? "(VOID)" : "")} >> [""{method.Name}|{asyncKey}"", {Serializer.PrintArray(unserializedData)}]");
 
-                    // Check parameters
                     ParameterInfo[] parameters = method.GetParameters();
+                    if (unserializedData.Length > parameters.Length)
+                        unserializedData = unserializedData.Take(parameters.Length).ToArray();
 
-                    // If there are extra parameters, remove them
-                    if (unserializedData.Length > parameters.Length) unserializedData = unserializedData.Take(parameters.Length).ToArray();
-
-                    // If there are not enough parameters return error
-                    if (unserializedData.Length != parameters.Length) {
+                    if (unserializedData.Length != parameters.Length)
                         throw new ArmaAsyncException(asyncKey, $"Parameter count mismatch for method {method.Name}. Expected {parameters.Length}, got {unserializedData.Length}.");
-                    }
-                    
-                    // Invoke the method and get the result
-                    object result = method.Invoke(null, unserializedData)!;
 
-                    // Dont send a response if the method is void
+                    object? result = method.Invoke(null, unserializedData);
+
                     if (isVoid) return;
 
-                    // Await the task if the result is an asynchronous task
                     if (result is Task taskResult) {
                         await taskResult;
-                        if (taskResult is Task<object> taskObjectResult) result = await taskObjectResult;
+                        if (taskResult.GetType().IsGenericType)
+                            result = ((dynamic)taskResult).Result;
                     }
 
-                    SendAsyncCallbackMessage(ASYNC_RESPONSE, [result], (int)ReturnCodes.Success, asyncKey);
+                    SendAsyncCallbackMessage(ResultCodes.ASYNC_RESPONSE.ToString(), [result], (int)ReturnCodes.Success, asyncKey);
                 } catch (Exception ex) {
-                    SendAsyncCallbackMessage(ASYNC_FAILED, [ex.Message], (int)ReturnCodes.Error, asyncKey);
+                    SendAsyncCallbackMessage(ResultCodes.ASYNC_FAILED.ToString(), [ex.Message], (int)ReturnCodes.Error, asyncKey);
                 } finally {
-                    lock (AsyncTasks) AsyncTasks.Remove(asyncKey);
+                    AsyncTasks.TryRemove(asyncKey, out _);
+                    if (!string.IsNullOrEmpty(token))
+                        CancelTokens.TryRemove(token, out _);
                 }
-            });
+            }, capturedToken);
 
-            lock (AsyncTasks) AsyncTasks.Add(asyncKey, Task.CompletedTask);
+            AsyncTasks[asyncKey] = Task.CompletedTask;
+
+            return token;
         }
+
     }
 }
