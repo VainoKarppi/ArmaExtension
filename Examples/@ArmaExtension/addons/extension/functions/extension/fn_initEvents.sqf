@@ -10,20 +10,19 @@ addMissionEventHandler ["ExtensionCallback",{
 
 	if (_name == EXT_var_extensionName) then {
 
-		_splitted = (_function splitString "|") params ["_type",["_requestID","-1"],["_returnCode","1"]];
+		(_function splitString "|") params ["_type",["_requestID","-1"],["_returnCode","1"]];
 
-		_data = parseSimpleArray _data;
 		_requestID = parseNumber _requestID;
 		_returnCode = parseNumber _returnCode;
 
-		
-
 		if (_type == "ASYNC_RESPONSE") then {
+			
 			if (_requestID == -1) exitWith { diag_log "ERROR: Async Key not included in response!" };
 			if !(_requestID in EXT_var_extensionRequests) exitWith { diag_log format ["ERROR: ID %1 not found!", _requestID] };
+
+			_data = parseSimpleArray _data;
 			
-			EXT_var_extensionResponses set [_requestID,[_data,_returnCode]];
-			
+			EXT_var_extensionResponses set [_requestID,[_data,_returnCode]];	
 		} else {
 			diag_log format ["ERROR: %1", _data select 0]
 		};

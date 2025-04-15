@@ -61,6 +61,9 @@ while {_tries > 0} do {
 	_tries = _tries - 1;
 };
 
+//EXT_var_extensionResponses deleteAt _requestId;
+//EXT_var_extensionRequests deleteAt _requestId;
+
 if !(_success) exitWith { diag_log formatText ["ERROR: %1", _returnData]; _returnData};
 
 diag_log formatText ["SUCCESS WITH DATA: %1",_returnData];

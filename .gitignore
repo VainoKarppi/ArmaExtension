@@ -6,5 +6,6 @@ obj/
 *.sln
 *.dll
 *.pbo
+*.log
 
 **/hash.txt

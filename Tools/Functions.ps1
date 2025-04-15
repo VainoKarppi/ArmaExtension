@@ -215,7 +215,7 @@ function Pack-Addons {
     return $true
 }
 
-function Watch-ArmaLog {
+function Watch-ExtensionLog {
     $armaPath = Get-ArmaPath
 
     Start-Sleep -Seconds 2
@@ -273,6 +273,60 @@ function Watch-ArmaLog {
         }
     } else {
         Write-Host "Arma 3 executable not found: $armaPath\arma3_x64.exe" -ForegroundColor Red
+    }
+}
+
+function Watch-RPTLog {
+    $armaLogPath = "$env:LOCALAPPDATA\Arma 3"
+
+    Start-Sleep -Seconds 2
+
+    if (Test-Path -Path "$armaLogPath") {
+        $latestRPT = Get-ChildItem -Path $armaLogPath -Filter "*.RPT" | Sort-Object LastWriteTime -Descending | Select-Object -First 1
+        $initialTime = if ($latestRPT) { $latestRPT.LastWriteTime } else { Get-Date }
+
+        Write-Host "Waiting for a new .RPT file at ('$armaLogPath') after: $initialTime" -ForegroundColor Yellow
+
+        # Wait for a new .RPT file to appear
+        do {
+            Start-Sleep -Seconds 1
+
+            # Check if the Arma 3 process is running
+            if (-not (Get-Process -Name "arma3_x64" -ErrorAction SilentlyContinue)) {
+                Write-Host "Arma 3 is no longer running." -ForegroundColor Red
+                return
+            }
+
+            $newRPT = Get-ChildItem -Path $armaLogPath -Filter "*.RPT" | Sort-Object LastWriteTime -Descending | Select-Object -First 1
+        } while (-not $newRPT -or $newRPT.LastWriteTime -le $initialTime)
+
+        Write-Host "New .RPT file detected: $($newRPT.FullName)" -ForegroundColor Green
+
+        # Live monitoring of the new .RPT file with Ctrl+C handling
+        try {
+            Get-Content -Path $newRPT.FullName -Wait | ForEach-Object {
+                Write-Host $_
+            }
+        } catch {
+            if ($_.Exception.GetType().Name -eq "OperationCanceledException") {
+                Write-Host "Log monitoring was stopped by user (Ctrl+C)." -ForegroundColor Yellow
+            } else {
+                Write-Host "An error occurred during log monitoring: $_" -ForegroundColor Red
+            }
+        }
+
+        # Monitor Arma 3 and stop log monitoring if needed
+        while ($true) {
+            Start-Sleep -Seconds 1
+
+            # Check if Arma 3 is still running
+            if (-not (Get-Process -Name "arma3_x64" -ErrorAction SilentlyContinue)) {
+                Write-Host "Arma 3 has stopped. Stopping log monitoring." -ForegroundColor Red
+                return
+            }
+        }
+    } else {
+        Write-Host "Arma 3 log folder not found: $armaLogPath" -ForegroundColor Red
     }
 }
 

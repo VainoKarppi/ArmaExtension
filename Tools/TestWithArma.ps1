@@ -8,27 +8,25 @@ try {
     exit 1
 }
 
-
-
-
-
-
-
 $projectPath = Get-ProjectPath
 $modFolder = "$projectPath\Examples\@$((Get-BuildInfo).AssemblyName -replace '_x64$', '')"
-
 
 Write-Host "Project Path: $projectPath" -ForegroundColor Blue
 Write-Host "Mod Path: $modFolder" -ForegroundColor Blue
 Write-Host ""
-
 
 Terminate-ExistingProcess
 
 if (Build-Project -projectPath $projectPath -destinationPath $modFolder) {
     if (Pack-Addons -modFolder $modFolder) {
         if (Start-Arma) {
-            Watch-ArmaLog
+            # Combine Watch-ExtensionLog and Watch-RPTLog in the same console
+            Start-Job -ScriptBlock {
+                . "$using:functionsScript"
+                Watch-ExtensionLog | ForEach-Object { Write-Host "[EXT] $_" }
+            }
+
+            Watch-RPTLog | ForEach-Object { Write-Host "[RPT] $_" }
 
             # Ask if the user wants to terminate Arma 3 before exit
             $userInput = Read-Host "Do you want to terminate Arma 3 before exiting? (Y/N)"
@@ -43,6 +41,9 @@ if (Build-Project -projectPath $projectPath -destinationPath $modFolder) {
             } else {
                 Write-Host "Arma 3 will remain running."
             }
+
+            # Stop the background job
+            Get-Job | Stop-Job | Remove-Job
         }
     }
 }
