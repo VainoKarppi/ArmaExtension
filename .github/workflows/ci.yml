@@ -11,7 +11,7 @@ jobs:
       uses: actions/checkout@v3
 
     - name: Setup .NET
-      uses: actions/setup-dotnet@v3
+      uses: actions/setup-dotnet@v4
       with:
         dotnet-version: '9.0.x'
 
@@ -25,7 +25,7 @@ jobs:
       run: dotnet publish --configuration Release --output ./publish
 
     - name: Move DLL
-      run: mv ./publish/YourProject.dll ./another-folder/YourProject.dll
+      run: mv ./publish/ArmaExtension_x64.dll ./Tests/ArmaExtension_x64.dll
 
     - name: Download CallExtension
       run: |
@@ -98,7 +98,7 @@ def run_test(exe_path, test):
     return False
 
 tests = read_tests('tests.txt')
-exe_path = './callExtension/callExtensionx64.exe'
+exe_path = './callExtension/callExtension_x64.exe'
 
 for test in tests:
     if not run_test(exe_path, test):
