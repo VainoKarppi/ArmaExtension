@@ -1,0 +1,109 @@
+name: CI
+
+on: [push]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v3
+
+    - name: Setup .NET
+      uses: actions/setup-dotnet@v3
+      with:
+        dotnet-version: '9.0.x'
+
+    - name: Restore dependencies
+      run: dotnet restore
+
+    - name: Build
+      run: dotnet build --configuration Release --no-restore
+
+    - name: Publish
+      run: dotnet publish --configuration Release --output ./publish
+
+    - name: Move DLL
+      run: mv ./publish/YourProject.dll ./another-folder/YourProject.dll
+
+    - name: Download CallExtension
+      run: |
+        function Download-CallExtension {
+            $callExtensionPath = "$PSScriptRoot/callExtension"
+            if (-Not (Test-Path -Path $callExtensionPath)) {
+                Write-Host "callExtension folder not found. Downloading..." -ForegroundColor Yellow
+                
+                $url = "http://killzonekid.com/pub/callExtension_v2.0.zip"
+                $zipPath = "$PSScriptRoot/callExtension_v2.0.zip"
+                $extractPath = "$PSScriptRoot/callExtension_v2.0"
+                $finalPath = "$PSScriptRoot/callExtension"
+                
+                Invoke-WebRequest -Uri $url -OutFile $zipPath
+                Expand-Archive -Path $zipPath -DestinationPath $extractPath
+                Move-Item -Path "$extractPath/callExtension" -Destination $finalPath
+                Remove-Item -Path $extractPath -Recurse -Force
+                Remove-Item -Path $zipPath -Force
+
+                Write-Host "Removing unnecessary files..." -ForegroundColor Blue
+                $filesToRemove = @("readme.txt", "callExtension.exe", "test_callback.dll", "test_callback_x64.dll", "test_extension.dll", "test_extension_x64.dll", "test_script.sqf", "test_script2.sqf", "test_script3.sqf")
+                foreach ($file in $filesToRemove) {
+                    $filePath = Join-Path -Path $finalPath -ChildPath $file
+                    if (Test-Path -Path $filePath) {
+                        Remove-Item -Path $filePath -Force
+                    }
+                }
+                
+                Write-Host "callExtension Downloaded Successfully!" -ForegroundColor Green
+            } else {
+                Write-Host "CallExtension already installed..." -ForegroundColor Green
+            }
+        }
+        Download-CallExtension
+
+    - name: Run callExtensionx64.exe with test.sqf
+      run: ./callExtension/callExtensionx64.exe ./test.sqf
+
+    - name: Check console output
+      run: |
+        python -c "
+import subprocess
+import time
+
+def read_tests(file_path):
+    with open(file_path, 'r') as file:
+        content = file.read()
+    tests = content.split('\\n\\n')
+    return tests
+
+def run_test(exe_path, test):
+    lines = test.split('\\n')
+    wait_command = lines[0]
+    expected_output = lines[1].replace('EXPECT: ', '')
+
+    process = subprocess.Popen([exe_path], stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+    
+    start_time = time.time()
+    while True:
+        output = process.stdout.readline().strip()
+        if output:
+            print(output)
+            if expected_output in output:
+                print('Expected output found.')
+                return True
+        if time.time() - start_time > 10:
+            break
+
+    print('Expected output not found.')
+    return False
+
+tests = read_tests('tests.txt')
+exe_path = './callExtension/callExtensionx64.exe'
+
+for test in tests:
+    if not run_test(exe_path, test):
+        print('Test failed.')
+        exit(1)
+else:
+    print('All tests passed.')
+        "

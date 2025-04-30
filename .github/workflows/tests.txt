@@ -1,0 +1,5 @@
+WAIT: "XXXX" callExtension ["Array|0",[10,[123],5]];
+EXPECT: [1,1,1]
+
+WAIT: "XXXX" callExtension ["Array|0",[10,[123],5]];
+EXPECT: [1,1,1]
