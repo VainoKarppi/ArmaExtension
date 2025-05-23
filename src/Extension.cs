@@ -9,46 +9,25 @@ using System.Threading.Tasks;
 using static ArmaExtension.Logger;
 
 namespace ArmaExtension;
-public static class Extension {
+
+public static partial class Extension
+{
     public readonly static string AssemblyDirectory = GetAssemblyLocation();
     public readonly static string Version = Assembly.GetExecutingAssembly().GetName().Version?.ToString()!;
     public readonly static string ExtensionName = GetAssemblyName();
-    
-    public enum ReturnCodes {
-        Success = 0,
-        Error = 1,
-        InvalidMethod = 2,
-        InvalidParameters = 3
-    }
-    
-    public enum ResultCodes {
-        SUCCESS,
-        SUCCESS_VOID,
-        ERROR,
-        ASYNC_RESPONSE,
-        ASYNC_SENT,
-        ASYNC_SENT_VOID,
-        ASYNC_FAILED,
-        ASYNC_CANCEL_SUCCESS,
-        ASYNC_CANCEL,
-        ASYNC_CANCEL_FAILED,
-        ASYNC_SUCCESS,
-        CALLFUNCTION
-    }
 
-    
 
-    
-    
+
+    private static unsafe delegate* unmanaged<string, string, string, int> Callback;
+
+
     /// <summary>
     /// Called only once when Arma 3 loads the extension.
     /// </summary>
     /// <param name="func">Pointer to Arma 3's callback function</param>
     [UnmanagedCallersOnly(EntryPoint = "RVExtensionRegisterCallback")]
-    public static unsafe void RvExtensionRegisterCallback(delegate* unmanaged<string, string, string, int> callback) { 
-        Callback = callback; 
-    }
-    internal static unsafe delegate* unmanaged<string, string, string, int> Callback;
+    public static unsafe void RvExtensionRegisterCallback(delegate* unmanaged<string, string, string, int> callback) => Callback = callback;
+    
 
 
 
@@ -59,7 +38,8 @@ public static class Extension {
     /// <param name="output">A pointer to the output buffer</param>
     /// <param name="outputSize">The maximum length of the buffer (always 32 for this particular method)</param>
     [UnmanagedCallersOnly(EntryPoint = "RVExtensionVersion")]
-    public static void RVExtensionVersion(nint output, int outputSize) {
+    public static void RVExtensionVersion(nint output, int outputSize)
+    {
         Log($"\n==============================================================\nExtension ({ExtensionName}) Started | {AssemblyDirectory} | {Version} |\n==============================================================");
         WriteOutput(output, outputSize, "Version", Version);
     }
@@ -73,10 +53,19 @@ public static class Extension {
     /// <param name="outputSize">The maximum size of the buffer (20480 bytes)</param>
     /// <param name="function">The function identifier passed in "callExtension"</param>
     [UnmanagedCallersOnly(EntryPoint = "RVExtension")]
-    public static int RVExtension(nint output, int outputSize, nint function) {
-        string method = Marshal.PtrToStringAnsi(function) ?? string.Empty;
+    public static int RVExtension(nint output, int outputSize, nint function)
+    {
+        string request = Marshal.PtrToStringAnsi(function) ?? string.Empty;
+        string method = GetMethodName(request);
+        try
+        {
+            bool fireAndForget = TryGetAsyncKey(request, out int asyncKey);
+            return ExecuteTask(output, outputSize, method);
+        }
+        catch (Exception ex){
+            return HandleError(output, outputSize, method, ex);
+        }
 
-        return ExecuteArmaMethod(output, outputSize, method);
     }
 
 
@@ -91,31 +80,72 @@ public static class Extension {
     /// <param name="argc">Number of elements in "argv"</param>
     /// <returns>The return code</returns>
     [UnmanagedCallersOnly(EntryPoint = "RVExtensionArgs")]
-    public static int RVExtensionArgs(nint output, int outputSize, nint function, nint args, int argsCnt) {
-        
+    public static int RVExtensionArgs(nint output, int outputSize, nint function, nint args, int argsCnt)
+    {
         // Get Method Name
-        string method = Marshal.PtrToStringAnsi(function) ?? string.Empty;
+        string request = Marshal.PtrToStringAnsi(function) ?? string.Empty;
+        string method = GetMethodName(request);
 
-        // Get Args
-        string[] argArray = new string[argsCnt];
-        for (int i = 0; i < argsCnt; i++) {
-            nint argPtr = Marshal.ReadIntPtr(args, i * nint.Size);
-            argArray[i] = Marshal.PtrToStringAnsi(argPtr) ?? string.Empty;
+        try {
+            object?[] arguments = GetArguments(args, argsCnt);
+
+            bool async = TryGetAsyncKey(request, out int asyncKey);
+
+            // Cancel Async Task
+            if (method == ResultMessages.ASYNC_CANCEL) return CancelAsyncTask(output, outputSize, method, asyncKey);
+
+            // Excute Method in ASYNC Mode
+            if (async) return ExecuteAsyncTask(output, outputSize, method, asyncKey, arguments);
+
+            // Execute Method in SYNC Mode
+            return ExecuteTask(output, outputSize, method, arguments);
+        } catch (Exception ex) {
+            return HandleError(output, outputSize, method, ex);
         }
-
-        return ExecuteArmaMethod(output, outputSize, method, argArray);
+    }
+    private static string GetMethodName(string request)
+    {
+        string[] splitted = request.Split('|');
+        return splitted.Length > 0 ? splitted[0] : string.Empty;
     }
 
+    private static object?[] GetArguments(nint args, int count) {
+        string[] rawArgs = new string[count];
+        for (int i = 0; i < count; i++) {
+            nint ptr = Marshal.ReadIntPtr(args, i * IntPtr.Size);
+            rawArgs[i] = Marshal.PtrToStringAnsi(ptr) ?? string.Empty;
+        }
+        return Serializer.DeserializeJsonArray(rawArgs);
+    }
 
+    private static bool TryGetAsyncKey(string request, out int asyncKey)
+    {
+        string[] splitted = request.Split('|');
+        asyncKey = -1;
+        return splitted.Length > 1 && int.TryParse(splitted[1], out asyncKey);
+    }
 
+    private static int HandleError(nint output, int outputSize, string method, Exception ex) {
+        string message = $@"[""{ResultMessages.ERROR}"",[""{ex.Message}""]]";
 
+        return WriteOutput(output, outputSize, method, message, (int)ReturnCodes.Error);
+    }
 
+    private static int CancelAsyncTask(nint outputAdress, int outputSize, string method, int asyncKey)
+    {
+        bool success = AsyncFactory.CancelAsyncTask(asyncKey);
 
+        string message = success ? ResultMessages.ASYNC_CANCEL_SUCCESS : ResultMessages.ASYNC_CANCEL_FAILED;
+        int returnCode = success ? (int)ReturnCodes.Success : (int)ReturnCodes.Error;
 
-    public static void SendAsyncCallbackMessage(string method, object?[] data, int errorCode = 0, int asyncKey = -1) {
+        return WriteOutput(outputAdress, outputSize, method, message, returnCode);
+    }
+
+    public static void SendAsyncCallbackMessage(string method, object?[] data, int errorCode = 0, int asyncKey = -1)
+    {
         if (string.IsNullOrEmpty(method)) Log("Empty function name in SendCallbackMessage.");
 
-        method += $"|{asyncKey}|{errorCode}";
+        method = $"{method}|{asyncKey}|{errorCode}";
 
         string returnData = Serializer.PrintArray(data);
 
@@ -127,30 +157,47 @@ public static class Extension {
             Log(ex.Message);
         }
     }
-    
 
-    private static int WriteOutput(nint output, int outputSize, string methodName, string message, int returnCode = 0) {
-        Log(@$"RESPONSE FOR METHOD: ({methodName}) >> {message}");
 
-        byte[] bytes = Encoding.ASCII.GetBytes(message);
-        int length = Math.Min(bytes.Length, outputSize - 1);
-        Marshal.Copy(bytes, 0, output, length);
-        Marshal.WriteByte(output, length, 0);
+    private static int WriteOutput(nint output, int outputSize, string methodName, string message, int returnCode = (int)ReturnCodes.Success)
+    {
+        try
+        {
+            if (string.IsNullOrEmpty(message)) throw new Exception("Empty message!");
+            if (string.IsNullOrEmpty(methodName)) throw new Exception("Empty method name!");
 
-        return returnCode;
+            // Make sure the message is in the correct format
+            if (message[0] != '[' && message[^1] != ']') message = $@"[""{message}"",[]]";
+
+            Log(@$"RESPONSE FOR METHOD: ({methodName}) >> {message}");
+
+            byte[] bytes = Encoding.ASCII.GetBytes(message);
+            int length = Math.Min(bytes.Length, outputSize - 1);
+            Marshal.Copy(bytes, 0, output, length);
+            Marshal.WriteByte(output, length, 0);
+
+            return returnCode;
+        }
+        catch (Exception ex)
+        {
+            Log(ex.Message);
+            return (int)ReturnCodes.Error;
+        }
+
     }
 
-    [RequiresAssemblyFiles()]
-    private static string GetAssemblyLocation() {
+    [RequiresAssemblyFiles]
+    private static string GetAssemblyLocation()
+    {
         string? dir = Assembly.GetExecutingAssembly().Location;
         if (string.IsNullOrEmpty(dir)) dir = AppContext.BaseDirectory;
         if (string.IsNullOrEmpty(dir)) dir = Assembly.GetAssembly(typeof(Extension))?.Location;
         if (string.IsNullOrEmpty(dir)) dir = typeof(Extension).Assembly.Location;
-        
+
         if (string.IsNullOrEmpty(dir)) dir = AppContext.BaseDirectory;
 
         if (string.IsNullOrEmpty(dir)) dir = Assembly.GetCallingAssembly().Location;
-        
+
 
         // Fallback to Arma 3 Directory
         if (string.IsNullOrEmpty(dir)) dir = AppDomain.CurrentDomain.BaseDirectory;
@@ -159,7 +206,8 @@ public static class Extension {
     }
 
     [RequiresAssemblyFiles()]
-    private static string GetAssemblyName() {
+    private static string GetAssemblyName()
+    {
         string name = Assembly.GetExecutingAssembly().GetName().Name!;
         if (string.IsNullOrEmpty(name)) throw new DirectoryNotFoundException("Unable to locate Assembly Name!");
         return name.EndsWith("_x64") ? name[..^4] : name;
@@ -167,84 +215,89 @@ public static class Extension {
 
 
 
-    public static bool MethodExists(string method) {
-        if (string.IsNullOrEmpty(method)) return false;
+    
+    public static MethodInfo GetMethod(string method, out bool isVoid) {
+        if (string.IsNullOrEmpty(method)) throw new Exception("Invalid Method");
 
-        // Check if the method exists in the Methods class
-        var methodInfo = typeof(Methods).GetMethod(method, BindingFlags.Public | BindingFlags.Static | BindingFlags.IgnoreCase);
-        return methodInfo != null;
-    }
-    public static bool IsVoidMethod(string method) {
-        // Check if the method exists in the Methods class
-        MethodInfo? methodInfo = typeof(Methods).GetMethod(method, BindingFlags.Public | BindingFlags.Static | BindingFlags.IgnoreCase);
-        return methodInfo != null && methodInfo.ReturnType == typeof(void);
-    }
-    public static MethodInfo GetMethod(string method) {
         //--- USING SYNCRONOUS METHOD
         MethodInfo? methodInfo = typeof(Methods).GetMethod(method, BindingFlags.Public | BindingFlags.Static | BindingFlags.IgnoreCase);
+        if (methodInfo == null) throw new Exception("Method Not Found");
+
+        isVoid = methodInfo.ReturnType == typeof(void);
+
         return methodInfo!;
     }
+    public static MethodInfo GetMethod(string method) {
+        return GetMethod(method, out _)!;
+    }
 
-    private static int ExecuteArmaMethod(nint output, int outputSize, string method, string[]? argArray = null) {
-        try {
-            argArray ??= [];
+    // Execute the method and return the result later using Callback
+    private static int ExecuteAsyncTask(nint output, int outputSize, string method, int asyncKey, object?[] arguments)
+    {
+        MethodInfo methodToInvoke = GetMethod(method, out bool isVoid);
+        isVoid = isVoid || asyncKey == 0;
 
-            int pipeIndex = method.IndexOf('|');
-            string originalMethod = pipeIndex >= 0 ? method[..pipeIndex] : method;
-            if (string.IsNullOrEmpty(originalMethod)) throw new Exception("Invalid Method");
+        // Call in different thread to avoid blocking the main thread
+        Task.Run(() => AsyncFactory.ExecuteAsyncTask(methodToInvoke, arguments, asyncKey, isVoid));
 
-            if (originalMethod.Equals(ResultCodes.ASYNC_CANCEL.ToString(), StringComparison.OrdinalIgnoreCase)) {
-                string taskKey = pipeIndex >= 0 ? method[(pipeIndex + 1)..] : string.Empty;
-                bool success = AsyncFactory.CancelAsyncTask(taskKey);
-                return WriteOutput(output, outputSize, originalMethod,
-                    $@"[""{(success ? ResultCodes.ASYNC_CANCEL_SUCCESS : ResultCodes.ASYNC_CANCEL_FAILED)}"",[]]",
-                    success ? (int)ReturnCodes.Success : (int)ReturnCodes.Error);
+        string message = isVoid ? ResultMessages.ASYNC_SENT_VOID : ResultMessages.ASYNC_SENT;
+        return WriteOutput(output, outputSize, method, message);
+    }
+
+
+    // Execute the code immedietly in synchronous and return the result
+    private static int ExecuteTask(nint output, int outputSize, string method, object?[]? arguments = null) {
+        arguments ??= [];
+
+        MethodInfo methodToInvoke = GetMethod(method, out bool isVoid);
+        
+
+        // Validate arguments before invoking the method
+        ValidateArguments(arguments, methodToInvoke);
+
+
+        if (isVoid) {
+            Task.Run(() => methodToInvoke.Invoke(null, arguments));
+            return WriteOutput(output, outputSize, method, ResultMessages.SUCCESS_VOID);
+        }
+
+        object? result = methodToInvoke.Invoke(null, arguments);
+        if (result is Task task) task.Wait();
+        object? returnValue = result is Task type && type.GetType().IsGenericType
+            ? ((dynamic)type).Result
+            : result;
+
+        string message = $@"[""{ResultMessages.SUCCESS}"",{Serializer.PrintArray([returnValue])}]";
+        return WriteOutput(output, outputSize, method, message);
+    }
+    
+    public static void ValidateArguments(object?[]? arguments, MethodInfo methodToInvoke) {
+        ParameterInfo[] parameters = methodToInvoke.GetParameters();
+
+        arguments ??= [];
+
+        // Ensure that we don't try to provide more arguments than parameters
+        if (arguments.Length > parameters.Length) arguments = arguments.Take(parameters.Length).ToArray();
+
+        // Check for missing required arguments and type mismatches
+        for (int i = 0; i < parameters.Length; i++) {
+            var parameter = parameters[i];
+
+            // If the parameter is optional and there's no argument provided, skip to the next one
+            if (i >= arguments.Length && parameter.HasDefaultValue) continue;
+
+            // If there's an argument and it's null, replace with default value if possible
+            if (i < arguments.Length && arguments[i] == null && parameter.HasDefaultValue) arguments[i] = parameter.DefaultValue;
+
+            // If there's an argument, ensure its type is compatible with the parameter type
+            if (i < arguments.Length && arguments[i] != null && !parameter.ParameterType.IsAssignableFrom(arguments[i]?.GetType())) {
+                throw new Exception($"Argument type mismatch for parameter {parameter.Name} (Index {i}) in method {methodToInvoke.Name}. Expected {parameter.ParameterType}, got {arguments[i]?.GetType()}.");
             }
+        }
 
-            if (!MethodExists(originalMethod)) throw new Exception("Invalid Method");
-
-            MethodInfo methodToInvoke = GetMethod(originalMethod);
-            bool isVoid = IsVoidMethod(originalMethod);
-
-            int asyncKey = 0;
-            bool async = pipeIndex >= 0 && int.TryParse(method[(pipeIndex + 1)..], out asyncKey);
-
-            if (async) {
-                string cancelKey = AsyncFactory.ExecuteAsyncTask(methodToInvoke, argArray, asyncKey);
-                string outputPayload = isVoid
-                    ? $@"[""{ResultCodes.ASYNC_SENT_VOID}"",[]]"
-                    : $@"[""{ResultCodes.ASYNC_SENT}"",[""{cancelKey}""]]";
-                
-                return WriteOutput(output, outputSize, originalMethod, outputPayload, (int)ReturnCodes.Success);
-            }
-
-
-            ParameterInfo[] parameters = methodToInvoke.GetParameters();
-            if (parameters.Length > 0 && argArray.Length == 0)
-                throw new Exception("Parameters missing!");
-
-            object?[] unserializedData = Serializer.DeserializeJsonArray(argArray);
-
-            if (isVoid) {
-                Task.Run(() => methodToInvoke.Invoke(null, unserializedData));
-                return WriteOutput(output, outputSize, originalMethod,
-                    $@"[""{ResultCodes.SUCCESS_VOID}"",[]]",
-                    (int)ReturnCodes.Success);
-            }
-
-            object? result = methodToInvoke.Invoke(null, unserializedData);
-            if (result is Task task) task.Wait();
-            object? returnValue = result is Task t && t.GetType().IsGenericType
-                ? ((dynamic)t).Result
-                : result;
-
-            return WriteOutput(output, outputSize, originalMethod,
-                $@"[""{ResultCodes.SUCCESS}"",{Serializer.PrintArray([returnValue])}]",
-                (int)ReturnCodes.Success);
-        } catch (Exception ex) {
-            return WriteOutput(output, outputSize, method,
-                $@"[""{ResultCodes.ERROR}"",[""{ex.Message}""]]",
-                (int)ReturnCodes.Error);
+        // If there's still a mismatch in argument count and no optional parameters to account for, throw an exception
+        if (arguments.Length < parameters.Length && parameters.Any(p => !p.HasDefaultValue)) {
+            throw new Exception($"Parameter count mismatch for method {methodToInvoke.Name}. Expected {parameters.Length}, got {arguments.Length}.");
         }
     }
 

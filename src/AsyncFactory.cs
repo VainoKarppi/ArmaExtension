@@ -11,70 +11,50 @@ using static ArmaExtension.Extension;
 
 namespace ArmaExtension {
     public static class AsyncFactory {
-        private static readonly ConcurrentDictionary<int, Task> AsyncTasks = new();
-        private static readonly ConcurrentDictionary<string, CancellationTokenSource> CancelTokens = new();
+        private static readonly ConcurrentDictionary<int, CancellationTokenSource> CancelTokens = [];
 
 
-        public static bool CancelAsyncTask(string token) {
-            if (CancelTokens.TryGetValue(token, out CancellationTokenSource? source)) {
-                source.Cancel();
-                return CancelTokens.TryRemove(token, out _);
+        public static bool CancelAsyncTask(int asyncKey) {
+            if (CancelTokens.TryGetValue(asyncKey, out CancellationTokenSource? source)) {
+                Task.Run(source.Cancel); // We dont want to wait for any expections here
+                return CancelTokens.TryRemove(asyncKey, out _);
             }
             return false;
         }
 
-        public static string ExecuteAsyncTask(MethodInfo method, string[] argArray, int asyncKey) {
-            bool isVoid = IsVoidMethod(method.Name) || asyncKey == -1;
+        public static async Task ExecuteAsyncTask(MethodInfo method, object?[] arguments, int asyncKey, bool isVoid) {
 
             // Only create cancel token if we’ll actually use it
             CancellationTokenSource? source = null;
-            string token = string.Empty;
 
             if (!isVoid) {
                 source = new CancellationTokenSource();
-                token = Guid.NewGuid().ToString("N").ToUpper();
-                CancelTokens[token] = source;
+                CancelTokens[asyncKey] = source;
             }
 
-            var capturedToken = source?.Token ?? CancellationToken.None;
-
-            Task.Run(async () => {
+            await Task.Run(async () => {
                 try {
-                    object?[] unserializedData = Serializer.DeserializeJsonArray(argArray);
 
-                    Log(@$"ASYNC RESPONSE {(isVoid ? "(VOID)" : "")} >> [""{method.Name}|{asyncKey}"", {Serializer.PrintArray(unserializedData)}]");
+                    Log(@$"ASYNC RESPONSE {(isVoid ? "(VOID)" : "")} >> [""{method.Name}|{asyncKey}"", {Serializer.PrintArray(arguments)}]");
 
-                    ParameterInfo[] parameters = method.GetParameters();
-                    if (unserializedData.Length > parameters.Length)
-                        unserializedData = unserializedData.Take(parameters.Length).ToArray();
+                    ValidateArguments(arguments, method);
 
-                    if (unserializedData.Length != parameters.Length)
-                        throw new ArmaAsyncException(asyncKey, $"Parameter count mismatch for method {method.Name}. Expected {parameters.Length}, got {unserializedData.Length}.");
-
-                    object? result = method.Invoke(null, unserializedData);
+                    object? result = method.Invoke(null, arguments);
 
                     if (isVoid) return;
 
                     if (result is Task taskResult) {
                         await taskResult;
-                        if (taskResult.GetType().IsGenericType)
-                            result = ((dynamic)taskResult).Result;
+                        if (taskResult.GetType().IsGenericType) result = ((dynamic)taskResult).Result;
                     }
 
-                    SendAsyncCallbackMessage(ResultCodes.ASYNC_RESPONSE.ToString(), [result], (int)ReturnCodes.Success, asyncKey);
+                    SendAsyncCallbackMessage(ResultMessages.ASYNC_RESPONSE, [result], (int)ReturnCodes.Success, asyncKey);
                 } catch (Exception ex) {
-                    SendAsyncCallbackMessage(ResultCodes.ASYNC_FAILED.ToString(), [ex.Message], (int)ReturnCodes.Error, asyncKey);
+                    SendAsyncCallbackMessage(ResultMessages.ASYNC_RESPONSE, [ex.Message], (int)ReturnCodes.Error, asyncKey);
                 } finally {
-                    AsyncTasks.TryRemove(asyncKey, out _);
-                    if (!string.IsNullOrEmpty(token))
-                        CancelTokens.TryRemove(token, out _);
+                    CancelTokens.TryRemove(asyncKey, out _);
                 }
-            }, capturedToken);
-
-            AsyncTasks[asyncKey] = Task.CompletedTask;
-
-            return token;
+            }, source?.Token ?? CancellationToken.None);
         }
-
     }
 }

@@ -1,4 +1,4 @@
-if !(isNil "EXT_var_extensionRequests") exitWith {};
+if !(isNil "EXT_var_extensionRequests") exitWith { true }; // Extension already initialized
 
 
 diag_log "Initializing Extension Test for C# .NET";
