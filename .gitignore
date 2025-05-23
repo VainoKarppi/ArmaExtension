@@ -3,6 +3,9 @@ bin/
 obj/
 [Tt]ools/callExtension/
 
+
+**/ArmaExtension_Logs
+
 *.sln
 *.dll
 *.pbo
