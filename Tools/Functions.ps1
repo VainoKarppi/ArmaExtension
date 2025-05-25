@@ -174,12 +174,15 @@ function Build-Project {
     # Write or overwrite linker.xml file in the project folder
     Set-Content -Path $linkerXmlPath -Value $linkerXmlContent -Encoding UTF8
     
-    $currentHash = Compute-ProjectHash
-    if (Test-Path -Path $hashFilePath) {
-        $previousHash = Get-Content -Path $hashFilePath
-        if ($previousHash -eq $currentHash.Hash) {
-            Write-Host "No changes detected in the .cs files. Skipping build..." -ForegroundColor Blue
-            return $true
+    # Check if the destination path is provided and the update hash file
+    if (-not $destinationPath) {
+        $currentHash = Compute-ProjectHash
+        if (Test-Path -Path $hashFilePath) {
+            $previousHash = Get-Content -Path $hashFilePath
+            if ($previousHash -eq $currentHash.Hash) {
+                Write-Host "No changes detected in the .cs files. Skipping build..." -ForegroundColor Blue
+                return $true
+            }
         }
     }
     
@@ -226,6 +229,9 @@ function Build-Project {
 
     if ($process.ExitCode -eq 0) {
         Write-Host "Build successful." -ForegroundColor Green
+
+        if (-not $destinationPath) { return $true }
+
         $currentHash.Hash | Set-Content -Path $hashFilePath
 
         $sourceDllPath = "$outputPath\$dllName"
