@@ -1,4 +1,4 @@
-# ArmaExtension
+# Arma Native C# AOT Extension
 
 ## Prerequisites
 
@@ -25,26 +25,28 @@ Before you begin, ensure you have the following installed:
     - Modify the `AssemblyName` and `Version` fields as per your requirements.
 
 3. **Build the Project**:
-    - Open a terminal and navigate to the project directory.
-    - Run the following command to build the project:
-      ```sh
-      msbuild ArmaExtension.sln
-      ```
-
-## Running Tests
-
-1. **Navigate to Tools Folder**:
-    - Open a terminal and navigate to the `Tools` folder within the project directory.
-
-2. **Run Test Script**:
-    - Execute the `TestExtension.ps1` script to run the tests:
-      ```sh
-      ./TestExtension.ps1
-      ```
+    - Execute the `Tools\BuildExtension.ps1` script to build the project:
+    - Alternatively, you can run the script from VSCode by selecting **Tasks: Run Build Task**.
     - If the script gets stuck at "Building the project...", press `Ctrl+C` and try running the script again.
 
-3. **Edit `base_test.sqf`**:
-    - You can edit the `base_test.sqf` file as you wish, but keep the `XXXX` placeholder since this is automatically updated, when a copy of this file is moved to the `callExtension` folder.
+
+## Running Tests
+1. **Edit `base_test.sqf`**:
+    - You can edit the `Tools\base_test.sqf` file as you wish, but keep the `XXXX` placeholder since this is automatically updated, when a copy of this file is moved to the `Tools\callExtension` folder.
+
+2. **Test via using Killzone Kid's callExtension Tool**:
+[KK's blog: callExtension v2.0](http://killzonekid.com/callextension-v2-0/)
+
+    - Execute the `Tools\TestExtension.ps1` script to run the tests:
+    - Alternatively, you can run the script from **VSCode** using the test task named **Test Extension**.
+    - If the script gets stuck at "Building the project...", press `Ctrl+C` and try running the script again.
+
+2. **Test via Arma**:
+  - You can also run the test task named **Test With Arma** to open Arma with this extension loaded.  
+  - This automatically loads the **.SQF** files into a **.PBO** from the **Examples\\@ArmaExtension\\addons** folder.  
+  - **WARNING:** If you change the **AssemblyName** inside the ***.csproj*** file, you need to manually update this folder’s name and the ***mod.cpp*** file!
+
+
 
 ## License
 

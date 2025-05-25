@@ -11,6 +11,13 @@ try {
 $projectPath = Get-ProjectPath
 $modFolder = "$projectPath\Examples\@$((Get-BuildInfo).AssemblyName -replace '_x64$', '')"
 
+if (-not (Test-Path -Path $modFolder)) {
+    New-Item -Path $modFolder -ItemType Directory | Out-Null
+    Write-Host "Created new mod folder: $modFolder" -ForegroundColor Green
+    Write-Host "Please ensure the mod folder is set up correctly before proceeding!" -ForegroundColor Yellow
+    Read-Host "Press Enter to continue..."
+}
+
 Write-Host "Project Path: $projectPath" -ForegroundColor Blue
 Write-Host "Mod Path: $modFolder" -ForegroundColor Blue
 Write-Host ""

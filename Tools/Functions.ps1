@@ -137,7 +137,7 @@ function Update-NamespacesAndUsings($assemblyName) {
             if ($lines[$i] -match '^\s*namespace\s+([^\s;{]+)') {
                 $lines[$i] = $lines[$i] -replace '(^\s*namespace\s+)([^\s;{]+)', "`$1$assemblyName"
             }
-            # Replace using statements with ArmaExtension prefix
+
             elseif ($lines[$i] -match "^\s*using(\s+static)?\s+$oldAssemblyName(\.|;|$)") {
                 
                 $lines[$i] = $lines[$i] -replace "(^\s*using(\s+static)?\s+)$oldAssemblyName", "`$1$assemblyName"

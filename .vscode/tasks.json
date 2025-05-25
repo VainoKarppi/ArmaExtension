@@ -2,7 +2,7 @@
     "version": "2.0.0",
     "tasks": [
         {
-            "label": "Run TestExtension.ps1",
+            "label": "Test Extension",
             "type": "shell",
             "command": "powershell",
             "args": [
@@ -21,7 +21,7 @@
             }
         },
         {
-            "label": "Run TestWithArma.ps1",
+            "label": "Test With Arma",
             "type": "shell",
             "command": "powershell",
             "args": [
@@ -40,14 +40,14 @@
             }
         },
         {
-            "label": "Build Extension.ps1",
+            "label": "Build Extension",
             "type": "shell",
             "command": "powershell",
             "args": [
                 "${workspaceFolder}\\Tools\\BuildExtension.ps1"
             ],
             "group": {
-                "kind": "test",
+                "kind": "build",
                 "isDefault": true
             },
             "problemMatcher": [],
