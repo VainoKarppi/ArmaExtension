@@ -1,67 +1,73 @@
-
+﻿
 using System;
 using System.Diagnostics.CodeAnalysis;
 using System.Threading.Tasks;
 using ArmaExtension;
 using static ArmaExtension.Logger;
 
-namespace ArmaExtension; // Do not change this namespace, it is used by the extension loader
+namespace ArmaExtension; // Do not change the namespace, it is updated automatically by the build system.
 
+// 
 
-
-
-    
 [ArmaExtensionPlugin]
-public static class MyExtension222
-{
-    public static class ArmaMethods
-    {
-        public static string Version()
-        {
+public static class MyExtension {
+    public static class ArmaMethods {
+        // CALLED FROM ARMA USING:
+        // _data = "ArmaExtension" callExtension "Version";
+        // _data == "[""SUCCESS"",[""1.0.0.0""]]"
+        public static string Version() {
             return Extension.Version;
         }
-        public static double Numeric(double first, double second)
-        {
+
+        // CALLED FROM ARMA USING:
+        // _data = "ArmaExtension" callExtension ["Numeric",[10,10]];
+        // _data == "[""SUCCESS"",[20]]"
+        public static double Numeric(double first, double second) {
             Log($"Numeric Method Called: {first}+{second}");
             return first + second;
         }
-        public static object[] Boolean(bool input)
-        {
+
+        // IF YOU WANT TO USE ASYNC METHODS, YOU NEED TO USE THE ASYNC KEY
+        // CALLED FROM ARMA USING:
+        // _data = "ArmaExtension" callExtension ["Boolean|99999",[true]];
+        // _data == "[""ASYNC_SENT"",CANCEL_TOKEN]"
+
+        // You can then retrieve the result using:
+        // addMissionEventHandler ["ExtensionCallback", { ... } Example in github
+
+        public static object[] Boolean(bool input) {
             Log($"Boolean Method Called: {input}");
             return [true, 1000];
         }
+        
+        
         public static string String(string input)
         {
             Log($"String Method Called: {input}");
             return "IS THIS WORKINGgg";
         }
-        public static void Null(bool input)
-        {
+        public static void Null(bool input) {
             Log($"Null Method Called: {input}");
         }
-        public static object[] Array(double first, object[] second, double third)
-        {
+        public static object[] Array(double first, object[] second, double third) {
             Log("Array Method Called");
             return [1, 2, 3, 4, 5];
         }
-        public static object[] ArrayInner(object[] items)
-        {
+        public static object[] ArrayInner(object[] items) {
             Log("ArrayInner Method Called");
             return [1, 2, 3, 4, new object[] { 1 }, 5];
         }
-        public static object[] NoArgs()
-        {
+        public static object[] NoArgs() {
             Log("NoArgs Method Called");
             return [1, 2, 3, 4, 5];
         }
     }
 
-    // Initialized when extension is Loaded
+
+
+    // ! INITIALIZED WHEN FIRST EXTENSION CALL IS MADE
     // If just public static void is used in Main(), it will block the Arma 3 until this method is finished
     // If its using public static async Task, this will not block the Arma 3, but events might not have been registered yet.
-
-    
-    // Static constructor to satisfy DynamicDependency attribute
     public static void Main()
     {
         Extension.RegisterMethods(typeof(ArmaMethods)); // Always register your methods
