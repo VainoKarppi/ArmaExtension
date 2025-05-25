@@ -6,7 +6,7 @@ obj/
 
 **/ArmaExtension_Logs
 
-
+*.sln
 *.dll
 *.pbo
 *.log
