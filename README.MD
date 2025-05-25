@@ -42,9 +42,9 @@ Before you begin, ensure you have the following installed:
     - If the script gets stuck at "Building the project...", press `Ctrl+C` and try running the script again.
 
 2. **Test via Arma**:
-  - You can also run the test task named **Test With Arma** to open Arma with this extension loaded.  
-  - This automatically loads the **.SQF** files into a **.PBO** from the **Examples\\@ArmaExtension\\addons** folder.  
-  - **WARNING:** If you change the **AssemblyName** inside the ***.csproj*** file, you need to manually update this folder’s name and the ***mod.cpp*** file!
+    - You can also run the test task named **Test With Arma** to open Arma with this extension loaded.  
+    - This automatically loads the **.SQF** files into a **.PBO** from the **Examples\\@ArmaExtension\\addons** folder.  
+    - **WARNING:** If you change the **AssemblyName** inside the ***.csproj*** file, you need to manually update this folder’s contents (**.sqf scripts, mod.cpp, etc.**)!
 
 
 
