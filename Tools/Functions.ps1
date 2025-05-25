@@ -165,6 +165,7 @@ function Build-Project {
     $assemblyNameWithoutSuffix = $buildInfo.AssemblyName -replace "_x64$", ""
 
     $linkerXmlContent = "
+<!-- DO NOT MODIFY THIS FILE MANUALLY - THIS FILE UPDATES AUTOMATICALLY -->
 <linker>
     <assembly fullname=""$($buildInfo.AssemblyName)"">
         <type fullname=""$($assemblyNameWithoutSuffix).*"" preserve=""all"" />

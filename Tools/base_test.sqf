@@ -1,3 +1,10 @@
+// !!! WARNING !!!
+//
+// DO NOT CHANGE THE "XXXX" PART!
+// THIS IS AUTOMATICALLY UPDATED TO YOUR EXTENSION NAME BASED ON ASSEMBLY NAME!
+//
+// !!!!!!!!!!!!!!!
+
 "XXXX" callExtension "version";
 
 
