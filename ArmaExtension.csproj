@@ -18,9 +18,14 @@
     <Configuration>Release</Configuration>
     <StripSymbols>true</StripSymbols>
     <Optimization>true</Optimization>
+    <IsTrimmable>false</IsTrimmable>
 
     <NoWarn>IL3002;IL2026;IDE0270;IDE0019</NoWarn>
     
   </PropertyGroup>
+
+  <ItemGroup>
+    <TrimmerRootDescriptor Include="linker.xml" />
+  </ItemGroup>
 
 </Project>

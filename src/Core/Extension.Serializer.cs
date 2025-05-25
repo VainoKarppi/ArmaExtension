@@ -2,10 +2,8 @@
 using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
-using System.Text;
 using System.Text.Json;
 using System.Text.Json.Nodes;
-using static ArmaExtension.Logger;
 
 namespace ArmaExtension;
 
@@ -32,19 +30,16 @@ public static class Serializer {
 
                     if (node is JsonArray jsonArray) {
                         result.Add(ConvertJsonArray(jsonArray));  // Handle array and recursively convert
-                    }
-                    else if (node is JsonValue value) {
+                    } else if (node is JsonValue value) {
                         // Use TryParseSingleArmaItem to parse the value
                         if (!TryParseSingleArmaItem(value.ToString(), out object? parsedValue)) {
                             parsedValue = null;  // If parsing fails, set to null (or handle as needed)
                         }
                         result.Add(parsedValue);
-                    }
-                    else {
+                    } else {
                         result.Add(null);  // If it's something else (shouldn't happen with valid JSON)
                     }
-                }
-                catch (JsonException) {
+                } catch (JsonException) {
                     // If parsing fails (invalid JSON), treat it as a regular value
                     if (!TryParseSingleArmaItem(item, out object? parsedItem)) {
                         parsedItem = null;  // If parsing fails, set to null (or handle as needed)
@@ -62,14 +57,12 @@ public static class Serializer {
             JsonNode? item = jsonArray[i];
             if (item is JsonArray nestedArray) {
                 result[i] = ConvertJsonArray(nestedArray);  // Recursively process nested arrays
-            }
-            else if (item is JsonValue value) {
+            } else if (item is JsonValue value) {
                 // Call TryParseSingleArmaItem and check the result
                 if (!TryParseSingleArmaItem(value.ToString(), out result[i])) {
                     result[i] = null!;  // If parsing fails, set to null (or handle it as needed)
                 }
-            }
-            else {
+            } else {
                 result[i] = null!;  // Handle any other unexpected cases
             }
         }
@@ -121,7 +114,7 @@ public static class Serializer {
 
     //TODO: Implement this
     private static string ParseDictionaryToArma(Dictionary<object, object> dict) {
-        List<string> pairs = new();
+        List<string> pairs = [];
         foreach (var kvp in dict) {
             string key = kvp.Key is string ? $"'{kvp.Key}'" : kvp.Key.ToString()!;
             string value = kvp.Value is string ? $"'{kvp.Value}'" : kvp.Value.ToString()!;
