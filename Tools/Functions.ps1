@@ -74,15 +74,81 @@ function Get-BuildInfo {
 }
 
 function Compute-ProjectHash {
-    param ($projectPath)
-    
+    $projectPath = Get-ProjectPath
+
     $combinedHashes = ""
+
+    # Get all .cs files
     $csFiles = Get-ChildItem -Path $projectPath -Recurse -Filter *.cs
     foreach ($file in $csFiles) {
         $hash = Get-FileHash -Path $file.FullName
         $combinedHashes += $hash.Hash
     }
+
+    # Get all .csproj files
+    $csprojFiles = Get-ChildItem -Path $projectPath -Recurse -Filter *.csproj
+    foreach ($file in $csprojFiles) {
+        $hash = Get-FileHash -Path $file.FullName
+        $combinedHashes += $hash.Hash
+    }
+
     return Get-FileHash -InputStream ([System.IO.MemoryStream]::new([System.Text.Encoding]::UTF8.GetBytes($combinedHashes)))
+}
+
+function Get-OldAssemblyName {
+    $projectPath = Get-ProjectPath
+
+    # Find Extension.Core.cs anywhere under projectPath
+    $filePath = Get-ChildItem -Path $projectPath -Recurse -Filter "Extension.Core.cs" -File -ErrorAction SilentlyContinue | Select-Object -First 1
+
+    if (-not $filePath) {
+        throw "Extension.Core.cs not found in $projectPath or its subfolders."
+    }
+
+    $lines = Get-Content $filePath.FullName
+    foreach ($line in $lines) {
+        if ($line -match '^\s*namespace\s+([^\s;{]+)') {
+            return $matches[1]
+        }
+    }
+    throw "Namespace declaration not found in $($filePath.FullName)"
+}
+
+function Update-NamespacesAndUsings($assemblyName) {
+    $projectPath = Get-ProjectPath
+    $csFiles = Get-ChildItem -Path $projectPath -Recurse -Filter *.cs
+
+    $oldAssemblyName = Get-OldAssemblyName
+
+    if ($assemblyName -eq $oldAssemblyName) {
+        return
+    }
+
+    Write-Host ""
+    Write-Host "Updating namespace and using names..." -ForegroundColor Blue
+    Write-Host "New Assembly Name: $assemblyName" -ForegroundColor Green
+    Write-Host "Old Assembly Name: $oldAssemblyName" -ForegroundColor Yellow
+
+    foreach ($file in $csFiles) {
+        $lines = Get-Content -Path $file.FullName
+
+        for ($i = 0; $i -lt $lines.Length; $i++) {
+            # Replace namespace declaration
+            if ($lines[$i] -match '^\s*namespace\s+([^\s;{]+)') {
+                $lines[$i] = $lines[$i] -replace '(^\s*namespace\s+)([^\s;{]+)', "`$1$assemblyName"
+            }
+            # Replace using statements with ArmaExtension prefix
+            elseif ($lines[$i] -match "^\s*using(\s+static)?\s+$oldAssemblyName(\.|;|$)") {
+                
+                $lines[$i] = $lines[$i] -replace "(^\s*using(\s+static)?\s+)$oldAssemblyName", "`$1$assemblyName"
+            }
+        }
+
+        Set-Content -Path $file.FullName -Value ($lines -join "`n") -Encoding UTF8
+    }
+
+    Write-Host "Updated namespaces and using statements in .cs files." -ForegroundColor Green
+    Write-Host ""
 }
 
 function Build-Project {
@@ -93,8 +159,22 @@ function Build-Project {
     $outputPath = "$projectPath\bin\Release\$($buildInfo.TargetFramework)\$($buildInfo.RuntimeIdentifier)\publish"
     $dllName = "$($buildInfo.AssemblyName).dll"
     $hashFilePath = "$destinationPath\hash.txt"
+
+    # Update linker.xml content dynamically to match AssemblyName
+    $linkerXmlPath = Join-Path $projectPath "linker.xml"
+    $assemblyNameWithoutSuffix = $buildInfo.AssemblyName -replace "_x64$", ""
+
+    $linkerXmlContent = "
+<linker>
+    <assembly fullname=""$($buildInfo.AssemblyName)"">
+        <type fullname=""$($assemblyNameWithoutSuffix).*"" preserve=""all"" />
+    </assembly>
+</linker>
+    "
+    # Write or overwrite linker.xml file in the project folder
+    Set-Content -Path $linkerXmlPath -Value $linkerXmlContent -Encoding UTF8
     
-    $currentHash = Compute-ProjectHash -projectPath $projectPath
+    $currentHash = Compute-ProjectHash
     if (Test-Path -Path $hashFilePath) {
         $previousHash = Get-Content -Path $hashFilePath
         if ($previousHash -eq $currentHash.Hash) {
@@ -103,20 +183,57 @@ function Build-Project {
         }
     }
     
+    Update-NamespacesAndUsings -assemblyName $assemblyNameWithoutSuffix
+
     Write-Host "Building the project..." -ForegroundColor Blue
-    $buildProcess = Start-Process -FilePath "dotnet" -ArgumentList "publish", $projectPath -WindowStyle Normal -PassThru
-    $buildProcess.WaitForExit()
-    
-    if ($buildProcess.ExitCode -eq 0) {
+
+    $startInfo = New-Object System.Diagnostics.ProcessStartInfo
+    $startInfo.FileName = "dotnet"
+    $startInfo.Arguments = "publish `"$projectPath`""
+    $startInfo.RedirectStandardOutput = $true
+    $startInfo.RedirectStandardError = $true
+    $startInfo.UseShellExecute = $false
+    $startInfo.CreateNoWindow = $true
+
+    $process = New-Object System.Diagnostics.Process
+    $process.StartInfo = $startInfo
+    $process.Start() | Out-Null
+
+    $stdOut = $process.StandardOutput.ReadToEnd()
+    $stdErr = $process.StandardError.ReadToEnd()
+
+    $process.WaitForExit()
+
+    # Function to print warnings and errors from a string, coloring lines accordingly
+    function Print-ColoredOutput($text) {
+        $lines = $text -split "`r?`n"
+        foreach ($line in $lines) {
+            if ($line -imatch "error") {
+                Write-Host $line -ForegroundColor Red
+            } elseif ($line -imatch "warning") {
+                Write-Host $line -ForegroundColor Yellow
+            } else {
+                Write-Host $line
+            }
+        }
+    }
+
+    # Print stdout lines with colors
+    Print-ColoredOutput $stdOut
+
+    # Print stderr lines with colors
+    Print-ColoredOutput $stdErr
+
+    if ($process.ExitCode -eq 0) {
         Write-Host "Build successful." -ForegroundColor Green
         $currentHash.Hash | Set-Content -Path $hashFilePath
-        
+
         $sourceDllPath = "$outputPath\$dllName"
         $destinationDllPath = "$destinationPath\$dllName"
 
         Copy-Item -Path $sourceDllPath -Destination $destinationDllPath -Force
         Write-Host "Copied $dllName to $destinationPath" -ForegroundColor Green
-        
+
         return $true
     } else {
         Write-Host "Build failed." -ForegroundColor Red
