@@ -23,6 +23,8 @@ sleep 0.3;
 
 sleep 0.3;
 
+
+// When using async key, data is returned to Arma using addMissionEventHandler ["ExtensionCallback",[]]
 "XXXX" callExtension ["Array|0",[10,[123],5]];
 sleep 0.3;
 "XXXX" callExtension ["ArrayInner|1",[[10,[123],5,["test",[2]]]]];
