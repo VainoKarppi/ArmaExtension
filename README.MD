@@ -1,4 +1,23 @@
-# Arma Native C# AOT Extension
+## Arma 3 Extension Example (.NET 10 NativeAOT)
+
+This project is a modern template for building high-performance **Arma 3 extensions** using **.NET 10 NativeAOT**. It demonstrates how to create a fully native, lightweight extension with fast startup times, minimal dependencies, and reliable interoperability with the Arma 3 engine.
+
+### Features
+
+- **NativeAOT performance** - compiled to native code for fast execution and low overhead  
+- **Seamless Arma integration** - clean handling of `callExtension` requests and responses  
+- **Flexible parameter handling** - automatic mapping between Arma data types and C# types  
+- **Async-friendly design** - non-blocking operations for long-running tasks  
+- **Plugin-style architecture** - easily register and expose new methods to Arma  
+- **Practical examples** - includes test scripts and sample methods to demonstrate usage  
+
+### Purpose
+
+This repository serves as both a **learning resource** and a **production-ready starting point** for developers who want to build robust Arma 3 extensions using modern .NET.
+
+### Example Usage
+
+You can explore the example SQF scripts in `Tools/base_test.sqf` to see how the extension is called from Arma and how data is exchanged.
 
 ## Prerequisites
 
