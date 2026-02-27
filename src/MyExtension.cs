@@ -1,39 +1,22 @@
 ﻿
-using System;
-using System.Diagnostics.CodeAnalysis;
 using System.Threading.Tasks;
-using ArmaExtension;
 using static ArmaExtension.Logger;
 
-namespace ArmaExtension; // Do not change the namespace, it is updated automatically by the build system.
-
-// 
+// Do not change the namespace, it is updated automatically by the build system.
+// You can create your own namespace, but it needs to be added to linker.xml file using: <type fullname="MyNamespace.*" preserve="all" />
+namespace ArmaExtension; 
 
 [ArmaExtensionPlugin]
 public static class MyExtension {
     public static class ArmaMethods {
-        // CALLED FROM ARMA USING:
-        // _data = "ArmaExtension" callExtension "Version";
-        // _data == "[""SUCCESS"",[""1.0.0.0""]]"
         public static string Version() {
             return Extension.Version;
         }
 
-        // CALLED FROM ARMA USING:
-        // _data = "ArmaExtension" callExtension ["Numeric",[10,10]];
-        // _data == "[""SUCCESS"",[20]]"
         public static double Numeric(double first, double second) {
             Log($"Numeric Method Called: {first}+{second}");
             return first + second;
         }
-
-        // IF YOU WANT TO USE ASYNC METHODS, YOU NEED TO USE THE ASYNC KEY
-        // CALLED FROM ARMA USING:
-        // _data = "ArmaExtension" callExtension ["Boolean|99999",[true]];
-        // _data == "[""ASYNC_SENT"",CANCEL_TOKEN]"
-
-        // You can then retrieve the result using:
-        // addMissionEventHandler ["ExtensionCallback", { ... } Example in github
 
         public static object[] Boolean(bool input) {
             Log($"Boolean Method Called: {input}");
@@ -44,7 +27,7 @@ public static class MyExtension {
         public static string String(string input)
         {
             Log($"String Method Called: {input}");
-            return "IS THIS WORKINGgg";
+            return "Hello Arma 3!";
         }
         public static void Null(bool input) {
             Log($"Null Method Called: {input}");
@@ -61,6 +44,20 @@ public static class MyExtension {
             Log("NoArgs Method Called");
             return [1, 2, 3, 4, 5];
         }
+
+        public static async Task AsyncTest(string input = "test") {
+            Log($"AsyncTest Method Called with input: {input}");
+            await Task.Delay(2000); // Simulate some async work
+            Log("AsyncTest Method Completed");
+        }
+
+        public static async Task<bool> AsyncReturnTest(string input = "test") {
+            Log($"AsyncReturnTest Method Called with input: {input}");
+            await Task.Delay(2000); // Simulate some async work
+            Log("AsyncReturnTest Method Completed");
+
+            return true;
+        }
     }
 
 
@@ -70,22 +67,24 @@ public static class MyExtension {
     // If its using public static async Task, this will not block the Arma 3, but events might not have been registered yet.
     public static void Main()
     {
-        Extension.RegisterMethods(typeof(ArmaMethods)); // Always register your methods
+        MethodSystem.RegisterMethods(typeof(ArmaMethods)); // Always register your methods
 
         // Subscribe to events
-        Extension.VersionCalled += version => Log($"VersionCalled event triggered with version: {version}");
-        Extension.MethodCalled += methodName => Log($"MethodCalled event triggered with method: {methodName}");
+        Events.OnVersionCalled += version => Debug($"VersionCalled event triggered with version: {version}");
 
-        Extension.MethodCalledWithArgs += (methodName, args) => Log($"MethodCalledWithArgs event: {methodName} with args: {args}");
-        Extension.MethodCalledWithArgsResponse += (methodName, response, success) => Log($"MethodCalledWithArgsAndReturn event: {methodName} with response: {response}");
+        Events.OnMethodCalled += methodName => Debug($"MethodCalled event triggered with method: {methodName}");
+        Events.OnMethodCalledResponse += (methodName, response, success) => Debug($"MethodCalledResponse event: {methodName} with response count: {response?.Length ?? 0}, success: {success}");
 
-        Extension.AsyncTaskStarted += (method, asyncKey, args) => Log($"AsyncTaskStarted event triggered with method: {method}, asyncKey: {asyncKey}, args: {args}");
-        Extension.AsyncTaskCompleted += (method, asyncKey, response, success) => Log($"AsyncTaskCompleted event triggered with method: {method}, asyncKey: {asyncKey}, success: {success}, response: {response}");
-        Extension.AsyncTaskCancelled += (asyncKey, success) => Log($"AsyncTaskCancelled event triggered with asyncKey: {asyncKey}, success: {success},");
+        Events.OnMethodCalledWithArgs += (methodName, args) => Debug($"MethodCalledWithArgs event: {methodName} with args count: {args?.Length ?? 0}");
+        Events.OnMethodCalledWithArgsResponse += (methodName, response, success) => Debug($"MethodCalledWithArgsResponse event: {methodName} with response count: {response?.Length ?? 0}, success: {success}");
 
-        Extension.OnSendToArma += (method, data) => Log($"OnSendToArma event triggered with method: {method}, data: {data},");
+        Events.OnAsyncTaskStarted += (method, asyncKey, args) => Debug($"AsyncTaskStarted event triggered with method: {method}, asyncKey: {asyncKey}, args count: {args?.Length ?? 0}");
+        Events.OnAsyncTaskCompleted += (method, asyncKey, response, success) => Debug($"AsyncTaskCompleted event triggered with method: {method}, asyncKey: {asyncKey}, success: {success}, response count: {response?.Length ?? 0}");
+        Events.OnAsyncTaskCancelled += (asyncKey, success) => Debug($"AsyncTaskCancelled event triggered with asyncKey: {asyncKey}, success: {success}");
 
-        Extension.ErrorOccurred += ex => Log($"ErrorOccurred event triggered: {ex}");
+        Events.OnSendToArma += (method, data) => Debug($"OnSendToArma event triggered with method: {method}, data count: {data?.Length ?? 0}");
+        
+        Events.OnErrorOccurred += ex => Debug($"ErrorOccurred event triggered: {ex.Message}");
 
 
         // Send data to arma

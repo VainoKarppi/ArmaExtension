@@ -3,6 +3,8 @@ using System.Collections.Generic;
 using System.Runtime.InteropServices;
 using System.Text;
 using static ArmaExtension.Logger;
+using static ArmaExtension.MethodSystem;
+using static ArmaExtension.PluginLoader;
 
 namespace ArmaExtension;
 
@@ -11,11 +13,11 @@ public static partial class Extension {
     /// Get the context information passed from Arma 3.
     /// </summary>
     public readonly static List<string> ExtensionContext = []; // TODO: What should we actually contain in this
-    private static bool contextInitialized = false;
+    private static bool _contextInitialized = false;
 
     [UnmanagedCallersOnly(EntryPoint = "RVExtensionContext")]
     private static unsafe void RVExtensionContext(IntPtr* args, uint argsCnt) {
-        if (contextInitialized) return;
+        if (_contextInitialized) return;
 
         ExtensionContext.Clear();
 
@@ -33,7 +35,7 @@ public static partial class Extension {
         ExtensionContext.Add(missionName);
         ExtensionContext.Add(serverName);
 
-        contextInitialized = true;
+        _contextInitialized = true;
     }
 
     /// <summary>
@@ -59,7 +61,7 @@ public static partial class Extension {
         Log($"\n==============================================================\nExtension ({ExtensionName}) Started | {AssemblyDirectory} | {Version} |\n==============================================================");
 
         bool firstRun = InitializePlugins(); // Initialize plugins if not already done
-        if (!firstRun) VersionCalled.InvokeFireAndForget(Version);
+        if (!firstRun) Events.RaiseVersionCalled(Version);
 
         WriteOutput(output, outputSize, "Version", Version);
     }
@@ -76,8 +78,9 @@ public static partial class Extension {
     private static int RVExtension(nint output, int outputSize, nint function) {
         string method = Marshal.PtrToStringAnsi(function) ?? string.Empty;
 
-        MethodCalled.InvokeFireAndForget(method);
-        return ExecuteArmaMethod(output, outputSize, method);
+        Events.RaiseMethodCalled(method);
+
+        return HandleExecuteExtensionMethod(output, outputSize, method);
     }
 
 
@@ -93,8 +96,6 @@ public static partial class Extension {
     /// <returns>The return code</returns>
     [UnmanagedCallersOnly(EntryPoint = "RVExtensionArgs")]
     private static int RVExtensionArgs(nint output, int outputSize, nint function, nint args, int argsCnt) {
-
-        // Get Method Name
         string method = Marshal.PtrToStringAnsi(function) ?? string.Empty;
 
         // Get Args
@@ -104,7 +105,7 @@ public static partial class Extension {
             argArray[i] = Marshal.PtrToStringAnsi(argPtr) ?? string.Empty;
         }
 
-        return ExecuteArmaMethod(output, outputSize, method, argArray);
+        return HandleExecuteExtensionMethod(output, outputSize, method, argArray);
     }
 
 
@@ -116,46 +117,46 @@ public static partial class Extension {
     /// <param name="data"></param>
     /// <returns>BOOL - Success/Failed</returns>
     public static bool SendToArma(string method, object?[] data) {
-        if (string.IsNullOrEmpty(method)) Log("Empty function name in SendAsyncCallbackMessage.");
+        if (string.IsNullOrEmpty(method)) Log("Empty function name in SendToArma.");
 
-        OnSendToArma.InvokeFireAndForget(method, data);
+        Events.RaiseSendToArma(method, data);
         
         string dataString = Serializer.PrintArray(data);
 
-        Log(@$"SENDING DATA TO ARMA >> [""{ExtensionName}"", ""{method}"", ""{dataString}""]");
+        Debug(@$"EXTENSION >> ARMA >> [""{ExtensionName}"", ""{method}"", ""{dataString}""]");
 
         try {
             unsafe { Callback(ExtensionName, method, dataString); }
 
             return true;
         } catch (Exception ex) {
-            ErrorOccurred.InvokeFireAndForget(ex);
-            Log(ex.Message);
+            Events.RaiseErrorOccurred(ex);
+            Error(ex.Message);
             return false;
         }
     }
 
 
-    internal static void SendAsyncCallbackMessage(string method, object?[] data, int errorCode = 0, int asyncKey = -1) {
+    internal static void SendAsyncResponseCallbackMessage(string method, object?[] data, int errorCode = 0, int asyncKey = -1) {
         if (string.IsNullOrEmpty(method)) Log("Empty function name in SendAsyncCallbackMessage.");
 
         method += $"|{asyncKey}|{errorCode}";
 
         string returnData = Serializer.PrintArray(data);
 
-        Log(@$"CALLBACK TO ARMA >> [""{ExtensionName}"", ""{method}"", ""{returnData}""]");
+        Debug(@$"EXTENSION CALLBACK >> ARMA >> [""{ExtensionName}"", ""{method}"", ""{returnData}""]");
 
         try {
             unsafe { Callback(ExtensionName, method, returnData); }
         } catch (Exception ex) {
-            ErrorOccurred.InvokeFireAndForget(ex);
-            Log(ex.Message);
+            Events.RaiseErrorOccurred(ex);
+            Error(ex.Message);
         }
     }
 
 
     internal static int WriteOutput(nint output, int outputSize, string methodName, string message, int returnCode = 0) {
-        Log(@$"RESPONSE FOR METHOD: ({methodName}) >> {message}");
+        Debug(@$"EXTENSION >> ARMA >> ({methodName}) >> {message}");
 
         byte[] bytes = Encoding.ASCII.GetBytes(message);
         int length = Math.Min(bytes.Length, outputSize - 1);
