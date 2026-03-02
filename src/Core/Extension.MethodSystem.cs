@@ -49,6 +49,9 @@ public static partial class MethodSystem {
             int asyncKey = 0;
             bool async = pipeIndex >= 0 && int.TryParse(method[(pipeIndex + 1)..], out asyncKey);
 
+            // Add method info to context
+            ExtensionContext = (ExtensionContext ?? new ExtensionCallContext()) with { MethodName = method, AsyncKey = null };
+
             // Handle internal tool requests
             if (Enum.TryParse<ExtensionResultCode>(originalMethod, true, out var code)) {
                 switch (code) {
@@ -60,6 +63,9 @@ public static partial class MethodSystem {
 
                     case ExtensionResultCode.GET_AVAILABLE_METHODS:
                         return HandleGetMethods(output, outputSize, originalMethod);
+                    
+                    case ExtensionResultCode.MANAGE_FLAGS:
+                        return HandleManageFlags(output, outputSize, originalMethod, argArray);
                 }
             }
 
@@ -217,6 +223,78 @@ public static partial class MethodSystem {
         Debug("=============================================");
     }
 
+
+    /* 
+        * Example usage of the MANAGE_FLAGS internal tool:
+
+        * Get the current enabled feature flags for the extension
+        callExtension ["MANAGE_FLAGS", "GET"];
+
+        * Enable a specific feature flag (e.g., ContextStackTrace)
+        callExtension ["MANAGE_FLAGS", "ENABLE", "ContextStackTrace"];
+
+        * Disable a specific feature flag (e.g., ContextNoDefaultCall)
+        callExtension ["MANAGE_FLAGS", "DISABLE", "ContextNoDefaultCall"];
+
+        * Notes:
+            - "GET" returns a comma-separated list of currently enabled flags.
+            - "ENABLE" and "DISABLE" take the exact flag name (case-insensitive) as the second argument.
+            - If an invalid flag name or unknown action is provided, an error message is returned.
+    */
+    internal static int HandleManageFlags(nint output, int outputSize, string method, string[] args) {
+        // Usage: args[0] = "GET" | "ENABLE" | "DISABLE"
+        //        args[1] = "ContextStackTrace" (optional for GET)
+        if (args.Length == 0) return WriteOutput(output, outputSize, method,
+            "Missing arguments",
+            (int)ReturnCodes.Error);
+
+        string action = args[0].ToUpperInvariant();
+
+        switch (action) {
+            case "GET":
+                return WriteOutput(output, outputSize, method, FeatureFlags.ToString(), (int)ReturnCodes.Success);
+
+            case "ENABLE":
+                if (args.Length < 2) return WriteOutput(output, outputSize, method,
+                    "Missing flag name",
+                    (int)ReturnCodes.Error);
+
+                if (Enum.TryParse<RVExtensionFeature>(args[1], true, out var enableFlag)) {
+                    EnableFeature(enableFlag);
+                    return WriteOutput(output, outputSize, method,
+                        $"Enabled: {enableFlag}",
+                        (int)ReturnCodes.Success);
+                } else {
+                    return WriteOutput(output, outputSize, method,
+                        $"Error: Invalid flag {args[1]}",
+                        (int)ReturnCodes.Error);
+                }
+
+            case "DISABLE":
+                if (args.Length < 2) return WriteOutput(output, outputSize, method,
+                    "Missing flag name",
+                    (int)ReturnCodes.Error);
+
+                if (Enum.TryParse<RVExtensionFeature>(args[1], true, out var disableFlag)) {
+                    DisableFeature(disableFlag);
+
+                    return WriteOutput(output, outputSize, method,
+                        $"Disabled: {disableFlag}",
+                        (int)ReturnCodes.Success);
+
+                } else {
+                    return WriteOutput(output, outputSize, method,
+                        $"Error: Invalid flag {args[1]}",
+                        (int)ReturnCodes.Error);
+                }
+
+            default:
+                return WriteOutput(output, outputSize, method,
+                    $"Error: Unknown action {action}",
+                    (int)ReturnCodes.Error);
+        }
+    }
+
     private static string GetArmaParameterType(Type type) {
         if (type == typeof(void) || type == typeof(Task)) return "Nothing";
 
@@ -280,7 +358,7 @@ public static partial class MethodSystem {
 
         return false;
     }
-    
+
     internal static bool IsAsyncWithReturn(MethodInfo methodInfo) {
         if (methodInfo == null) return false;
 
