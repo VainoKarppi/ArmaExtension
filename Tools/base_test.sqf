@@ -52,18 +52,18 @@ sleep 0.3;
 "XXXX" callExtension ["String",["asdasd"]];
 
 
-"XXXX" callExtension ["AsyncReturnTest|2",[]]
+"XXXX" callExtension ["AsyncReturnTest|2",[]];
 sleep 0.3;
 
 // This will throw error: Task with asyncKey 2 is already running
-"XXXX" callExtension ["AsyncTest|2",[]]
+"XXXX" callExtension ["AsyncTest|2",[]];
 sleep 0.3;
 
 // This will throw error
-"XXXX" callExtension ["AsyncTest",[]]
+"XXXX" callExtension ["AsyncTest",[]];
 
 // This will throw: [["ERROR",["Invalid Method"]],1,0]
-"XXXX" callExtension ["MethodThatDoesNotExist",[]]
+"XXXX" callExtension ["MethodThatDoesNotExist",[]];
 
 sleep 0.3;
 freeExtension "XXXX";
