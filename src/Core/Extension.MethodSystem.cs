@@ -66,7 +66,7 @@ public static partial class MethodSystem {
             if (!MethodExists(originalMethod)) throw new Exception($"Method {originalMethod} not found!");
 
             // Execute method
-            if (async) {
+            if (asyncKey >= 0) {
                 return ExecuteAsyncMethod(originalMethod, argArray, asyncKey, output, outputSize);
             } else {
                 return ExecuteSyncMethod(originalMethod, argArray, output, outputSize);
@@ -90,7 +90,7 @@ public static partial class MethodSystem {
             throw new Exception($"Method {methodToInvoke.Name} can only be called using async key!");
         }
 
-        object?[] unserializedData = Serializer.DeserializeJsonArray(argArray);
+        object?[] unserializedData = Serializer.DeserializeJsonArray(methodToInvoke, argArray);
 
         // Prepare parameters (truncate, validate, fill defaults)
         object?[] finalParams = Serializer.PrepareMethodParameters(methodToInvoke, unserializedData);
