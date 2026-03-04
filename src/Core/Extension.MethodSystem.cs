@@ -98,17 +98,14 @@ public static partial class MethodSystem {
 
         object?[] unserializedData = Serializer.DeserializeJsonArray(methodToInvoke, argArray);
 
-        // Prepare parameters (truncate, validate, fill defaults)
-        object?[] finalParams = Serializer.PrepareMethodParameters(methodToInvoke, unserializedData);
-
         bool isVoid = IsVoidMethod(methodToInvoke);
 
         object? returnValue = null;
         if (isVoid && IsAsync(methodToInvoke)) {
             // Fire and forget
-            _ = Task.Run(() => methodToInvoke.Invoke(null, finalParams));
+            _ = Task.Run(() => methodToInvoke.Invoke(null, unserializedData));
         } else {
-            returnValue = methodToInvoke.Invoke(null, finalParams);
+            returnValue = methodToInvoke.Invoke(null, unserializedData);
         }
 
 
