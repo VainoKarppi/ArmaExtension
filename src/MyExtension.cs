@@ -1,4 +1,5 @@
 ﻿
+using System;
 using System.Threading.Tasks;
 using static ArmaExtension.Logger;
 
@@ -24,6 +25,19 @@ public static class ArmaMethods {
         return [true, 1000];
     }
     
+    public static string ExtensionFlags() {
+        ulong flagsBefore = Extension.GetFeatureFlagsNative();
+
+        bool enabled = Extension.SetFeatureFlag(Extension.PredefinedFlags.StackTrace, true);
+        bool disabled = Extension.SetFeatureFlag(Extension.PredefinedFlags.NoDefaultCall, false);
+
+        ulong flagsAfter = Extension.GetFeatureFlagsNative();
+
+        return $@"Before: {flagsBefore}
+                Enable StackTrace succeeded: {enabled}
+                Disable NoDefaultCall succeeded: {disabled}
+                After: {flagsAfter}";
+    }
     
     public static string String(string input)
     {

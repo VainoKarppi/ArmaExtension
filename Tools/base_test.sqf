@@ -23,6 +23,7 @@ sleep 0.3;
 
 sleep 0.3;
 
+"XXXX" callExtension "ExtensionFlags";
 
 // When using async key, data is returned to Arma using addMissionEventHandler ["ExtensionCallback",[]]
 "XXXX" callExtension ["Array|0",[10,[123],5]];
