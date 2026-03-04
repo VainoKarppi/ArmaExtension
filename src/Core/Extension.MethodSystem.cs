@@ -46,7 +46,7 @@ public static partial class MethodSystem {
             string originalMethod = pipeIndex >= 0 ? method[..pipeIndex] : method;
             if (string.IsNullOrEmpty(originalMethod)) throw new Exception("Invalid Method");
 
-            int asyncKey = 0;
+            int asyncKey = -1;
             bool async = pipeIndex >= 0 && int.TryParse(method[(pipeIndex + 1)..], out asyncKey);
 
             // Add method info to context
