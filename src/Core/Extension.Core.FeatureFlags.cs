@@ -14,9 +14,6 @@ public static partial class Extension
         ContextNoDefaultCall = 1 << 2
     }
 
-    // Keep enum alive for trimmer
-    private static readonly RVExtensionFeature _keepEnumAlive = RVExtensionFeature.ContextArgumentsVoidPtr;
-
     private static RVExtensionFeature _featureFlags =
         RVExtensionFeature.ContextArgumentsVoidPtr |
         RVExtensionFeature.ContextStackTrace |

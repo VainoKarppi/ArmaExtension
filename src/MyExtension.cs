@@ -28,15 +28,12 @@ public static class ArmaMethods {
     public static string ExtensionFlags() {
         ulong flagsBefore = Extension.GetFeatureFlagsNative();
 
-        bool enabled = Extension.SetFeatureFlag(Extension.PredefinedFlags.StackTrace, true);
-        bool disabled = Extension.SetFeatureFlag(Extension.PredefinedFlags.NoDefaultCall, false);
+        Extension.SetFeatureFlag(Extension.PredefinedFlags.StackTrace, true);
+        Extension.SetFeatureFlag(Extension.PredefinedFlags.NoDefaultCall, false);
 
         ulong flagsAfter = Extension.GetFeatureFlagsNative();
 
-        return $@"Before: {flagsBefore}
-                Enable StackTrace succeeded: {enabled}
-                Disable NoDefaultCall succeeded: {disabled}
-                After: {flagsAfter}";
+        return $@"Before: {flagsBefore} After: {flagsAfter}";
     }
     
     public static string String(string input)
