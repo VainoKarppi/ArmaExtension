@@ -5,12 +5,12 @@ params [["_function","",[""]],["_arguments",[],[[]]],["_fireAndForget",false,[fa
 
 if (isNil "EXT_var_extensionRequests") then {
 	private _initSuccess = call EXT_fnc_init;
-	if (!_initSuccess) exitWith{};
+	if (!_initSuccess) exitWith {};
 };
 
 if (_fireAndForget) then {_function = _function + "|-1"};
 
-diag_log formatText ["REQUEST: %1", _this];
+diag_log formatText ["REQUEST: %1",[_function, _arguments]]; // [Method,Arguments]
 private _result = EXT_var_extensionName callExtension [_function, _arguments];
 
 private _return = if (_result isEqualType []) then {

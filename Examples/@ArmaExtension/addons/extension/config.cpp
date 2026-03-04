@@ -17,12 +17,6 @@ class CfgFunctions
 {
 	class Extension {
 		tag = "EXT";
-		class Functions_Main
-		{
-			file = "\extension\functions";
-			preinit = 1;
-			class init {};
-		};
 		class Functions_Extension
 		{
 			file = "\extension\functions\extension";
